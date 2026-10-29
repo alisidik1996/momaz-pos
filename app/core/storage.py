@@ -25,21 +25,24 @@ async def upload_file_to_blob_or_local(file: UploadFile, folder: str = "products
             import httpx
             pathname = f"{folder}/{unique_name}"
             # Vercel Blob Put API endpoint
-            blob_url = f"https://blob.vercel-storage.com/{pathname}"
+            blob_url = f"https://blob.vercel-storage.com/{pathname}?access=public"
             async with httpx.AsyncClient(timeout=30.0) as client:
                 res = await client.put(
                     blob_url,
                     content=file_bytes,
                     headers={
                         "authorization": f"Bearer {token}",
-                        "x-api-version": "7",
-                        "content-type": file.content_type or "application/octet-stream"
+                        "x-api-version": "13",
+                        "content-type": file.content_type or "application/octet-stream",
+                        "x-vercel-blob-access": "public"
                     }
                 )
                 if res.status_code in [200, 201]:
                     data = res.json()
                     if data.get("url"):
                         return data["url"]
+                else:
+                    print(f"Vercel Blob upload response status {res.status_code}: {res.text}")
         except Exception as e:
             print(f"Vercel Blob upload failed (falling back to local if possible): {e}")
 

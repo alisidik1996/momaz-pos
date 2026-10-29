@@ -9,7 +9,12 @@ class Settings:
     
     # Cloud Database (Neon.tech PostgreSQL / Vercel Postgres)
     # If not set, gracefully falls back to local SQLite files
-    raw_db_url: str = os.getenv("DATABASE_URL") or os.getenv("POSTGRES_URL") or ""
+    raw_db_url: str = (
+        os.getenv("DATABASE_URL")
+        or os.getenv("POSTGRES_URL")
+        or os.getenv("POSTGRES_URL_NON_POOLING")
+        or ""
+    ).strip()
     if raw_db_url.startswith("postgres://"):
         raw_db_url = raw_db_url.replace("postgres://", "postgresql://", 1)
     
@@ -22,8 +27,9 @@ class Settings:
     # Tenants Database Directory (used when running in SQLite fallback mode)
     TENANTS_DIR: Path = BASE_DIR / "tenants"
     
-    # Vercel Blob Storage Token
-    BLOB_READ_WRITE_TOKEN: str = os.getenv("BLOB_READ_WRITE_TOKEN", "")
+    # Vercel Blob Storage Credentials
+    BLOB_READ_WRITE_TOKEN: str = os.getenv("BLOB_READ_WRITE_TOKEN", "").strip()
+    BLOB_STORE_ID: str = os.getenv("BLOB_STORE_ID", "").strip()
     
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-momaz-pos-multi-tenant-key-2026")
