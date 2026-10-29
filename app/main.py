@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
-from app.database import master_engine, MasterBase, extract_token_from_string
+from app.database import master_engine, MasterBase, extract_token_from_string, _get_master_unpooled_engine
 from app.core.security import decode_access_token
 
 # Import Routers
@@ -26,7 +26,13 @@ BASE_DIR = Path(__file__).resolve().parent
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: Ensure master database tables exist
-    MasterBase.metadata.create_all(bind=master_engine)
+    # Di PostgreSQL pakai UNPOOLED engine untuk DDL (CREATE TABLE)
+    # Neon pooler tidak mendukung DDL statements
+    if settings.DATABASE_URL:
+        ddl_engine = _get_master_unpooled_engine()
+    else:
+        ddl_engine = master_engine
+    MasterBase.metadata.create_all(bind=ddl_engine)
     yield
 
 app = FastAPI(

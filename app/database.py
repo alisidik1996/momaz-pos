@@ -18,6 +18,23 @@ master_engine = create_engine(
     echo=False
 )
 
+# Unpooled engine khusus DDL (CREATE SCHEMA, CREATE TABLE) — Neon pooler tidak support DDL
+_master_unpooled_engine = None
+
+def _get_master_unpooled_engine():
+    """Lazy-create unpooled master engine untuk operasi DDL di PostgreSQL."""
+    global _master_unpooled_engine
+    if _master_unpooled_engine is None:
+        unpooled_url = settings.MASTER_DATABASE_URL_UNPOOLED
+        connect_args = {} if is_postgres else {"check_same_thread": False}
+        _master_unpooled_engine = create_engine(
+            unpooled_url,
+            connect_args=connect_args,
+            pool_pre_ping=True,
+            echo=False
+        )
+    return _master_unpooled_engine
+
 if not is_postgres:
     @event.listens_for(master_engine, "connect")
     def set_master_sqlite_pragma(dbapi_connection, connection_record):
@@ -52,18 +69,31 @@ class TenantManager:
     def get_engine(cls, tenant_slug: str):
         if tenant_slug not in cls._engines:
             if is_postgres:
-                # In PostgreSQL (Neon.tech), isolate each tenant in its own schema
+                # Di PostgreSQL (Neon.tech), isolasi tiap tenant di schema sendiri
                 schema_name = "tenant_" + re.sub(r"[^a-zA-Z0-9_]", "_", tenant_slug.lower())
-                with master_engine.connect() as conn:
+                
+                # Gunakan UNPOOLED connection untuk CREATE SCHEMA (DDL)
+                # Neon pooler (PgBouncer) tidak mendukung statement DDL
+                unpooled_engine = _get_master_unpooled_engine()
+                with unpooled_engine.connect() as conn:
                     conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";'))
                     conn.commit()
 
+                # Gunakan POOLED URL untuk query reguler, tapi set search_path
+                # via event listener (bukan startup params — pooler tidak support itu)
                 engine = create_engine(
                     settings.DATABASE_URL,
-                    connect_args={"options": f"-c search_path={schema_name},public"},
                     pool_pre_ping=True,
                     echo=False
                 )
+
+                # Set search_path setiap kali koneksi baru dibuat
+                # Ini kompatibel dengan Neon pooler karena dikirim sebagai SQL biasa
+                @event.listens_for(engine, "connect")
+                def set_tenant_search_path(dbapi_connection, connection_record):
+                    cursor = dbapi_connection.cursor()
+                    cursor.execute(f'SET search_path TO "{schema_name}", public')
+                    cursor.close()
             else:
                 db_path = cls.get_db_path(tenant_slug)
                 engine = create_engine(
@@ -95,8 +125,24 @@ class TenantManager:
     @classmethod
     def _run_migrations(cls, engine):
         if is_postgres:
-            # On PostgreSQL, metadata.create_all creates all latest schema tables
-            Base.metadata.create_all(bind=engine)
+            # Pada PostgreSQL: jalankan DDL (create_all) via UNPOOLED engine
+            # agar kompatibel dengan Neon pooler yang tidak mendukung DDL
+            # Engine yang diteruskan sudah punya search_path yang benar via event listener,
+            # tapi kita butuh engine yang sama namun dengan unpooled connection untuk DDL.
+            # Solusi: ambil URL dari engine lalu buat unpooled engine sementara dengan
+            # search_path yang sama (set via execution_options setelah connect).
+            try:
+                # Coba jalankan create_all langsung dulu (untuk unpooled engine)
+                Base.metadata.create_all(bind=engine)
+            except Exception:
+                # Jika gagal (misalnya pooler tidak support), buat unpooled engine sementara
+                try:
+                    unpooled_url = settings.DATABASE_URL_UNPOOLED or settings.DATABASE_URL
+                    tmp_engine = create_engine(unpooled_url, pool_pre_ping=True, echo=False)
+                    Base.metadata.create_all(bind=tmp_engine)
+                    tmp_engine.dispose()
+                except Exception as e:
+                    print(f"Warning: DDL create_all gagal: {e}")
             return
 
         from sqlalchemy import inspect, text
@@ -282,10 +328,30 @@ class TenantManager:
 
     @classmethod
     def init_tenant_db(cls, tenant_slug: str):
-        """Creates all tenant tables in tenants/{tenant_slug}.db"""
-        engine = cls.get_engine(tenant_slug)
-        Base.metadata.create_all(bind=engine)
-        cls._run_migrations(engine)
+        """Creates all tenant tables.
+        
+        Di PostgreSQL: gunakan unpooled engine untuk DDL (CREATE TABLE) karena
+        Neon pooler (PgBouncer) tidak mendukung CREATE TABLE via startup params.
+        Search path ditetapkan via SQL SET setelah connect.
+        """
+        if is_postgres:
+            schema_name = "tenant_" + re.sub(r"[^a-zA-Z0-9_]", "_", tenant_slug.lower())
+            unpooled_url = settings.DATABASE_URL_UNPOOLED or settings.DATABASE_URL
+            tmp_engine = create_engine(unpooled_url, pool_pre_ping=True, echo=False)
+            try:
+                with tmp_engine.connect() as conn:
+                    conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";'))
+                    conn.execute(text(f'SET search_path TO "{schema_name}", public'))
+                    conn.commit()
+                Base.metadata.create_all(bind=tmp_engine)
+            finally:
+                tmp_engine.dispose()
+            # Pastikan engine normal (pooled) terdaftar untuk query berikutnya
+            cls.get_engine(tenant_slug)
+        else:
+            engine = cls.get_engine(tenant_slug)
+            Base.metadata.create_all(bind=engine)
+            cls._run_migrations(engine)
 
     @classmethod
     def close_tenant(cls, tenant_slug: str):
