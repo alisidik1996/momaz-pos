@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Analitik{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Ringkasan Penjualan Hari Ini</h3>
+      <p class="text-muted small mb-0">Pantau performa penjualan, laba kotor, dan ketersediaan stok pakaian toko.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadDashboard()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Segarkan Data
+      </button>
+    </div>
+  </div>
+
+  <!-- Stat Cards Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase">Omset Hari Ini</span>
+          <div class="stat-icon bg-primary-subtle text-primary">
+            <i class="bi bi-wallet2"></i>
+          </div>
+        </div>
+        <h4 class="fw-bold text-dark mb-1" id="stat-today-revenue">Rp 0</h4>
+        <small class="text-success"><i class="bi bi-graph-up me-1"></i>Total Penjualan</small>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase">Laba Kotor Hari Ini</span>
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-cash-coin"></i>
+          </div>
+        </div>
+        <h4 class="fw-bold text-dark mb-1" id="stat-today-profit">Rp 0</h4>
+        <small class="text-muted">Omset dikurangi HPP modal</small>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase">Jumlah Transaksi</span>
+          <div class="stat-icon bg-info-subtle text-info">
+            <i class="bi bi-receipt"></i>
+          </div>
+        </div>
+        <h4 class="fw-bold text-dark mb-1" id="stat-today-orders">0</h4>
+        <small class="text-muted">Struk belanja selesai</small>
+      </div>
+    </div>
+
+    <div class="col-md-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="text-muted small fw-semibold text-uppercase">Peringatan Stok Kritis</span>
+          <div class="stat-icon bg-danger-subtle text-danger">
+            <i class="bi bi-exclamation-triangle"></i>
+          </div>
+        </div>
+        <h4 class="fw-bold text-danger mb-1" id="stat-low-stock">0</h4>
+        <small class="text-danger"><a href="/backoffice/inventory" class="text-danger text-decoration-none">Periksa Stok Menipis &rarr;</a></small>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Sections Row -->
+  <div class="row g-4">
+    <!-- Payment Methods Breakdown -->
+    <div class="col-md-5">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="fw-bold mb-0"><i class="bi bi-credit-card me-2"></i> Metode Pembayaran Hari Ini</h6>
+        </div>
+        <div class="card-body" id="payment-breakdown-list">
+          <!-- Populated by backoffice.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Selling Clothing Items -->
+    <div class="col-md-7">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-header bg-white border-bottom py-3">
+          <h6 class="fw-bold mb-0"><i class="bi bi-trophy me-2"></i> Produk Pakaian Terlaris</h6>
+        </div>
+        <div class="card-body" id="top-items-list">
+          <!-- Populated by backoffice.js -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    loadDashboard();
+  });
+</script>
+{% endblock %}

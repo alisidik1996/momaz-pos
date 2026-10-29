@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Audit & Riwayat Shift Kasir{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Riwayat & Audit Shift Kasir</h3>
+      <p class="text-muted small mb-0">Pantau pembukaan kas awal (*cash float*), total penjualan kasir, dan audit selisih kas fisik (*cash over/short*).</p>
+    </div>
+    <div>
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadShiftsHistory()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Segarkan Data
+      </button>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="shifts-table">
+          <thead>
+            <tr>
+              <th>ID Shift</th>
+              <th>Nama Kasir</th>
+              <th>Mulai Shift</th>
+              <th>Selesai Shift</th>
+              <th>Modal Awal</th>
+              <th>Penjualan Tunai</th>
+              <th>Penjualan Non-Tunai</th>
+              <th>Kas Seharusnya</th>
+              <th>Kas Aktual Fisik</th>
+              <th>Selisih Kas</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="shifts-table-body">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    loadShiftsHistory();
+  });
+
+  async function loadShiftsHistory() {
+    try {
+      const shifts = await api.get("/api/shifts/history?limit=100");
+      const tbody = document.getElementById("shifts-table-body");
+      if (!tbody) return;
+
+      if (shifts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-4">Belum ada riwayat shift.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = shifts.map(s => {
+        const isClosed = s.status === "closed";
+        const statusBadge = isClosed ? '<span class="badge bg-secondary">Tutup</span>' : '<span class="badge bg-success">Aktif</span>';
+        
+        let diffColor = "text-muted";
+        let diffText = "-";
+        if (isClosed) {
+          if (s.cash_difference === 0) {
+            diffColor = "text-success fw-bold";
+            diffText = "Pas (Rp 0)";
+          } else if (s.cash_difference < 0) {
+            diffColor = "text-danger fw-bold";
+            diffText = `Kurang ${formatRupiah(Math.abs(s.cash_difference))}`;
+          } else {
+            diffColor = "text-primary fw-bold";
+            diffText = `Lebih +${formatRupiah(s.cash_difference)}`;
+          }
+        }
+
+        return `
+          <tr>
+            <td class="fw-bold">#${s.id}</td>
+            <td class="fw-semibold">${s.cashier_name || 'Kasir'}</td>
+            <td><small>${formatDate(s.start_time)}</small></td>
+            <td><small>${s.end_time ? formatDate(s.end_time) : '<span class="text-success fw-bold">Sedang Berjalan</span>'}</small></td>
+            <td>${formatRupiah(s.starting_cash)}</td>
+            <td class="text-success">${formatRupiah(s.total_sales_cash)}</td>
+            <td class="text-primary">${formatRupiah(s.total_sales_non_cash)}</td>
+            <td class="fw-bold">${formatRupiah(s.ending_cash_expected)}</td>
+            <td class="fw-bold">${s.ending_cash_actual !== null ? formatRupiah(s.ending_cash_actual) : '-'}</td>
+            <td class="${diffColor}">${diffText}</td>
+            <td>${statusBadge}</td>
+          </tr>
+        `;
+      }).join("");
+
+      if (typeof TableManager !== "undefined") {
+        TableManager.bind(tbody.closest("table"));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+</script>
+{% endblock %}

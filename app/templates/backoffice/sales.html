@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Riwayat Penjualan (Sales){% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Riwayat Transaksi Penjualan</h3>
+      <p class="text-muted small mb-0">Daftar seluruh transaksi yang diselesaikan oleh kasir, lengkap dengan rincian pembayaran & cetak struk.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" onclick="loadSalesHistory()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Segarkan Data
+      </button>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="sales-table">
+          <thead>
+            <tr>
+              <th>Nomor Invoice</th>
+              <th>Waktu Transaksi</th>
+              <th>Kasir</th>
+              <th>Pelanggan</th>
+              <th>Metode</th>
+              <th>Total Pembayaran</th>
+              <th class="no-sort">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="sales-table-body">
+            <!-- Populated by backoffice.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Receipt Modal -->
+<div class="modal fade" id="backofficeReceiptModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-receipt me-2"></i> Salinan Struk Belanja</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-3 bg-light" id="backoffice-receipt-preview">
+        <!-- Populated by JS -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-primary fw-bold" onclick="window.print()">
+          <i class="bi bi-printer me-1"></i> Cetak Struk
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    loadSalesHistory();
+  });
+
+  async function viewReceipt(orderId) {
+    try {
+      const receipt = await api.get(`/api/sales/orders/${orderId}/receipt`);
+      const container = document.getElementById("backoffice-receipt-preview");
+      
+      container.innerHTML = `
+        <div class="receipt-container">
+          <div class="receipt-header">
+            <h4>${receipt.store_name}</h4>
+            <p>${receipt.store_tagline}</p>
+            <p>${receipt.store_address}</p>
+            <p>Telp: ${receipt.store_phone}</p>
+          </div>
+          <div class="receipt-divider"></div>
+          <div class="receipt-meta">
+            <div><span>No: ${receipt.invoice_number}</span><span>${receipt.date_str}</span></div>
+            <div><span>Kasir: ${receipt.cashier_name}</span><span>Plg: ${receipt.customer_name || 'Umum'}</span></div>
+          </div>
+          <div class="receipt-divider"></div>
+          <table class="receipt-table">
+            <thead>
+              <tr><th>Item</th><th style="text-align:right;">Total</th></tr>
+            </thead>
+            <tbody>
+              ${receipt.items.map(it => `
+                <tr>
+                  <td>
+                    <div class="receipt-item-title">${it.product_name}</div>
+                    <div class="receipt-item-sub">${it.variant_info} (${it.quantity}x @${formatRupiah(it.unit_price)})</div>
+                  </td>
+                  <td style="text-align:right; font-weight:bold;">${formatRupiah(it.subtotal)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+          <div class="receipt-divider"></div>
+          <div class="receipt-summary">
+            <div class="receipt-summary-row"><span>Subtotal:</span><span>${formatRupiah(receipt.subtotal)}</span></div>
+            ${receipt.discount_amount > 0 ? `<div class="receipt-summary-row"><span>Diskon:</span><span>-${formatRupiah(receipt.discount_amount)}</span></div>` : ''}
+            ${receipt.tax_amount > 0 ? `<div class="receipt-summary-row"><span>PPN:</span><span>${formatRupiah(receipt.tax_amount)}</span></div>` : ''}
+            <div class="receipt-summary-row bold"><span>TOTAL:</span><span>${formatRupiah(receipt.total_amount)}</span></div>
+            <div class="receipt-summary-row"><span>Bayar (${receipt.payment_method}):</span><span>${formatRupiah(receipt.amount_paid)}</span></div>
+            <div class="receipt-summary-row"><span>Kembalian:</span><span>${formatRupiah(receipt.change_amount)}</span></div>
+          </div>
+          <div class="receipt-divider"></div>
+          <div class="receipt-footer">
+            ${receipt.receipt_footer}
+          </div>
+        </div>
+      `;
+
+      new bootstrap.Modal(document.getElementById("backofficeReceiptModal")).show();
+    } catch (e) {
+      showToast(e.message, "error");
+    }
+  }
+</script>
+{% endblock %}

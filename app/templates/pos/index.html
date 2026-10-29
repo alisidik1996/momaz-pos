@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kasir - {{ store_name|default('POS') }}</title>
+  
+  <!-- Bootstrap 5 CDN & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/pos.css">
+  <link rel="stylesheet" href="/static/css/receipt.css">
+</head>
+<body>
+
+  <div class="pos-wrapper flex-column">
+    <!-- POS Top Header -->
+    <header class="pos-header">
+      <div class="d-flex align-items-center gap-3">
+        <h5 class="mb-0 fw-bold d-flex align-items-center gap-2">
+          <i class="bi bi-shop text-primary"></i> <span class="app-store-name">{{ store_name|default('POS') }}</span>
+        </h5>
+        <div id="shift-status-badge" class="badge bg-secondary">Memeriksa Shift...</div>
+      </div>
+
+      <div class="d-flex align-items-center gap-3">
+        <div class="text-end me-2 d-none d-md-block">
+          <div class="fw-semibold small"><i class="bi bi-person-circle me-1"></i> {% if user %}{{ user.sub }}{% else %}Kasir{% endif %}</div>
+          <div class="text-secondary" style="font-size:0.75rem;" id="live-clock">-</div>
+        </div>
+        <a href="/backoffice/dashboard" class="btn btn-outline-light btn-sm">
+          <i class="bi bi-gear me-1"></i> Backoffice
+        </a>
+        <button onclick="handleLogout()" class="btn btn-outline-danger btn-sm">
+          <i class="bi bi-box-arrow-right"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="pos-main">
+      <!-- Left: Products Catalog & Fast Scanner -->
+      <section class="pos-left">
+        <!-- Search & Scanner Input Bar -->
+        <div class="pos-search-bar d-flex gap-2">
+          <div class="input-group" style="max-width: 380px;">
+            <span class="input-group-text bg-white border-primary"><i class="bi bi-upc-scan text-primary fs-5"></i></span>
+            <input type="text" id="barcode-scanner-input" class="form-control border-primary fw-bold" 
+                   placeholder="Scan Barcode / Tekan F2..." autofocus autocomplete="off">
+          </div>
+
+          <div class="input-group flex-grow-1">
+            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" id="search-input" class="form-control" placeholder="Cari nama pakaian (F1)...">
+          </div>
+        </div>
+
+        <!-- Category Filter Pills -->
+        <div class="pos-categories" id="category-filters">
+          <button class="btn btn-primary active">Semua Pakaian</button>
+        </div>
+
+        <!-- Product Grid -->
+        <div class="pos-products-grid" id="pos-product-grid">
+          <!-- Populated by pos.js -->
+        </div>
+
+        <!-- Shortcuts Help Bar -->
+        <div class="pos-shortcuts-bar">
+          <div><span class="shortcut-badge">F1</span>Cari Produk</div>
+          <div><span class="shortcut-badge">F2</span>Scan Barcode</div>
+          <div><span class="shortcut-badge">F8</span>Bayar Tunai</div>
+          <div><span class="shortcut-badge">F9</span>Bayar QRIS</div>
+        </div>
+      </section>
+
+      <!-- Right: Active Cart -->
+      <aside class="pos-right">
+        <!-- Cart Header -->
+        <div class="cart-header">
+          <div>
+            <span class="fw-bold fs-6">Keranjang Belanja</span>
+            <span class="badge bg-primary rounded-pill ms-1" id="cart-items-count">0</span>
+          </div>
+          <div>
+            <button class="btn btn-sm btn-outline-danger" onclick="clearCart()" title="Kosongkan">
+              <i class="bi bi-trash me-1"></i> Kosongkan
+            </button>
+          </div>
+        </div>
+
+        <!-- Customer Selector -->
+        <div class="p-2 border-bottom bg-light">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+            <select class="form-select form-select-sm" id="customer-select" onchange="handleCustomerChange(this)">
+              <option value="">Pelanggan Umum (Tanpa Member)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Cart Items List -->
+        <div class="cart-items" id="cart-items-list">
+          <!-- Populated by pos.js -->
+        </div>
+
+        <!-- Cart Calculation & Checkout Footer -->
+        <div class="cart-footer">
+          <div class="cart-total-row">
+            <span>Subtotal Item</span>
+            <span id="cart-subtotal">Rp 0</span>
+          </div>
+          <div class="cart-total-row">
+            <span>Diskon Pesanan</span>
+            <span class="text-danger" id="cart-discount">Rp 0</span>
+          </div>
+          <div class="cart-total-row" id="cart-tax-row" style="display:none;">
+            <span>PPN</span>
+            <span id="cart-tax">Rp 0</span>
+          </div>
+          <div class="cart-grand-total">
+            <span>Total Tagihan:</span>
+            <span id="cart-grand-total" class="text-primary">Rp 0</span>
+          </div>
+
+          <!-- Checkout Button -->
+          <div class="mt-3">
+            <button class="btn btn-primary btn-lg w-100 fw-bold py-2" id="btn-checkout-pay" onclick="initiateCheckoutFlow()" disabled>
+              <i class="bi bi-credit-card-2-front me-1"></i> BAYAR (F8)
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. Open Shift Modal -->
+  <div class="modal fade" id="openShiftModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title fw-bold"><i class="bi bi-cash-stack me-2"></i> Buka Shift Kasir Baru</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Tutup"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="text-muted small">Sebelum melayani pelanggan, silakan masukkan modal kas awal (*cash float*) yang ada di laci kasir.</p>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Modal Awal Kasir (Rp)</label>
+            <input type="number" id="open-shift-cash" class="form-control form-control-lg fw-bold text-primary" value="200000" min="0" step="10000">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Catatan Shift (Opsional)</label>
+            <input type="text" id="open-shift-note" class="form-control" placeholder="Shift Pagi / Kasir Utama">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary w-100 fw-bold py-2" onclick="submitOpenShift()">
+            <i class="bi bi-check2-circle me-1"></i> Mulai Shift Kasir
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Close Shift Modal -->
+  <div class="modal fade" id="closeShiftModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fw-bold"><i class="bi bi-door-closed me-2"></i> Tutup Shift & Rekonsiliasi Kas</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="p-3 bg-light rounded mb-3 border">
+            <div class="d-flex justify-content-between mb-1">
+              <span>Penjualan Tunai:</span>
+              <strong id="close-shift-sales-cash">Rp 0</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span>Penjualan Non-Tunai (QRIS/Kartu):</span>
+              <strong id="close-shift-sales-noncash">Rp 0</strong>
+            </div>
+            <hr class="my-2">
+            <div class="d-flex justify-content-between fs-6">
+              <span class="fw-bold">Kas Seharusnya di Laci:</span>
+              <strong class="text-primary fw-bold fs-5" id="close-shift-expected">Rp 0</strong>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Hitungan Fisik Uang di Laci (Rp)</label>
+            <input type="number" id="close-shift-actual" class="form-control form-control-lg fw-bold" placeholder="Hitung uang fisik di laci...">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small">Catatan Penutupan</label>
+            <input type="text" id="close-shift-note" class="form-control" placeholder="Alasan jika ada selisih kas...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-danger fw-bold px-4" onclick="submitCloseShift()">
+            <i class="bi bi-lock me-1"></i> Tutup Shift Resmi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2.5 Member Confirmation Modal -->
+  <div class="modal fade" id="memberCheckModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content shadow-lg border-0">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fw-bold"><i class="bi bi-person-badge text-warning me-2"></i>Konfirmasi Member & Affiliate</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopMemberCameraScanner()"></button>
+        </div>
+        <div class="modal-body p-4">
+          <div class="text-center mb-4">
+            <h4 class="fw-bold mb-1">Apakah pelanggan memiliki Kartu Member?</h4>
+            <p class="text-muted small">Scan barcode kartu member untuk mendapatkan diskon belanja khusus dan akumulasi komisi affiliate.</p>
+          </div>
+
+          <!-- Member Option Nav Pills -->
+          <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded border" id="memberCheckNav" role="tablist">
+            <li class="nav-item">
+              <button class="nav-link active fw-bold py-2" id="nav-camera-tab" data-bs-toggle="pill" data-bs-target="#tab-camera-scan" type="button" onclick="startMemberCameraScanner()">
+                <i class="bi bi-camera-video me-1"></i> 1. Buka Kamera (Scan Barcode)
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link fw-bold py-2" id="nav-manual-tab" data-bs-toggle="pill" data-bs-target="#tab-manual-input" type="button" onclick="stopMemberCameraScanner()">
+                <i class="bi bi-input-cursor me-1"></i> 2. Input No. HP / ID Member
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content border rounded p-3 mb-3 bg-white">
+            <!-- Camera Scanner Tab -->
+            <div class="tab-pane fade show active text-center" id="tab-camera-scan">
+              <div id="member-camera-reader" style="width: 100%; max-width: 380px; min-height: 220px; margin: 0 auto; background: #000; border-radius: 8px; overflow: hidden;" class="d-flex align-items-center justify-content-center text-white">
+                <div class="text-center p-3" id="camera-placeholder">
+                  <i class="bi bi-camera fs-1 text-secondary d-block mb-2"></i>
+                  <small class="text-white-50">Klik tombol di bawah untuk mengaktifkan kamera scanner.</small>
+                </div>
+              </div>
+              <div class="mt-2 d-flex justify-content-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="startMemberCameraScanner()">
+                  <i class="bi bi-play-circle me-1"></i> Aktifkan Kamera
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="stopMemberCameraScanner()">
+                  <i class="bi bi-stop-circle me-1"></i> Matikan Kamera
+                </button>
+              </div>
+              <small class="text-muted d-block mt-2" style="font-size:0.75rem;">Arahkan barcode batang kartu member ke arah lensa kamera.</small>
+            </div>
+
+            <!-- Manual Input Tab -->
+            <div class="tab-pane fade" id="tab-manual-input">
+              <div class="mb-3">
+                <label class="form-label fw-bold small">Masukkan Nomor Handphone atau 12 Digit ID Member</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                  <input type="text" id="member-manual-input" class="form-control" placeholder="Contoh: 08123456789 atau 12 Digit ID..." onkeydown="if(event.key==='Enter'){event.preventDefault();searchMemberManual();}">
+                  <button type="button" class="btn btn-primary fw-bold" onclick="searchMemberManual()">
+                    <i class="bi bi-search me-1"></i> Cari Member
+                  </button>
+                </div>
+              </div>
+              <div id="member-search-results"></div>
+            </div>
+          </div>
+
+          <!-- Selected Member Card Display -->
+          <div id="selected-member-card" style="display: none;" class="p-3 bg-success-subtle border border-success rounded mb-3">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <span class="badge bg-success mb-1"><i class="bi bi-check-circle me-1"></i> MEMBER TERVERIFIKASI</span>
+                <h5 class="fw-bold mb-0 text-success-emphasis" id="active-member-name">-</h5>
+                <div class="small text-muted font-monospace" id="active-member-details">-</div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" onclick="cancelSelectedMember()" title="Ganti Member">
+                <i class="bi bi-x-circle me-1"></i> Batal
+              </button>
+            </div>
+            <div class="mt-2 pt-2 border-top border-success-subtle d-flex justify-content-between small">
+              <span class="text-success-emphasis fw-semibold"><i class="bi bi-tag-fill me-1"></i> Total Hemat Diskon Member:</span>
+              <strong class="text-success" id="active-member-discount-total">Rp 0</strong>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-secondary" onclick="continueWithoutMember()">
+            <i class="bi bi-person-x me-1"></i> Pelanggan Umum (Tanpa Member)
+          </button>
+          <button type="button" class="btn btn-success fw-bold px-4" id="btn-proceed-with-member" onclick="proceedToPaymentWithMember()" disabled>
+            <i class="bi bi-arrow-right-circle me-1"></i> Lanjutkan Pembayaran
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Payment Checkout Modal -->
+  <div class="modal fade" id="paymentModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2"></i> Pembayaran Transaksi</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-4">
+          <input type="hidden" id="pay-modal-grandtotal-raw" value="0">
+          <input type="hidden" id="selected-payment-method" value="cash">
+
+          <div class="text-center p-3 mb-4 bg-light rounded border">
+            <div class="text-muted small">TOTAL TAGIHAN</div>
+            <div class="fs-1 fw-bold text-primary" id="pay-modal-total">Rp 0</div>
+          </div>
+
+          <!-- Payment Methods Tabs -->
+          <div class="d-flex gap-2 mb-4">
+            <button class="btn btn-primary pay-method-btn flex-grow-1 py-2 fw-semibold" id="method-btn-cash" onclick="setPaymentMethod('cash')">
+              <i class="bi bi-cash-coin me-1"></i> Tunai (Cash)
+            </button>
+            <button class="btn btn-outline-primary pay-method-btn flex-grow-1 py-2 fw-semibold" id="method-btn-qris" onclick="setPaymentMethod('qris')">
+              <i class="bi bi-qr-code me-1"></i> QRIS Dinamis
+            </button>
+            <button class="btn btn-outline-primary pay-method-btn flex-grow-1 py-2 fw-semibold" id="method-btn-card" onclick="setPaymentMethod('card')">
+              <i class="bi bi-credit-card me-1"></i> EDC / Debit
+            </button>
+          </div>
+
+          <!-- Dynamic Cash Panel -->
+          <div id="pay-cash-panel">
+            <div class="mb-3">
+              <label class="form-label fw-bold">Uang Diterima Dari Pelanggan (Rp)</label>
+              <input type="number" id="pay-amount-paid" class="form-control form-control-lg fw-bold text-success" oninput="calculateChange()">
+            </div>
+
+            <!-- Quick Cash Pills -->
+            <div class="quick-cash-grid mb-3">
+              <button class="btn btn-outline-secondary quick-cash-btn" onclick="setQuickCash(parseFloat(document.getElementById('pay-modal-grandtotal-raw').value))">Uang Pas</button>
+              <button class="btn btn-outline-secondary quick-cash-btn" onclick="setQuickCash(50000)">50.000</button>
+              <button class="btn btn-outline-secondary quick-cash-btn" onclick="setQuickCash(100000)">100.000</button>
+              <button class="btn btn-outline-secondary quick-cash-btn" onclick="setQuickCash(200000)">200.000</button>
+            </div>
+
+            <div class="p-3 bg-light rounded border d-flex justify-content-between align-items-center">
+              <span class="fw-bold fs-6">Kembalian:</span>
+              <span class="fs-4 fw-bold text-success" id="pay-modal-change">Rp 0</span>
+            </div>
+          </div>
+
+          <!-- Dynamic QRIS Panel -->
+          <div id="pay-qris-panel" style="display:none;" class="text-center py-3">
+            <div class="p-3 border rounded d-inline-block bg-white shadow-sm mb-3">
+              <!-- Simulated dynamic QRIS -->
+              <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" fill="currentColor" class="bi bi-qr-code" viewBox="0 0 16 16">
+                <path d="M2 2h2v2H2z"/><path d="M6 0v6H0V0zM5 1H1v4h4zM4 12H2v2h2z"/><path d="M6 10v6H0v-6zm-5 1v4h4v-4zm11-9h2v2h-2z"/>
+                <path d="M10 0v6h6V0zm5 1v4h-4V1zM8 1V0h1v2H8v2H7V1zm0 5V4h1v2zM6 8V7h1V6h1v2h1V7h5v1h-4v1H7V8zm0 0v1H2V8H1v1H0V7h3v1zm10 1h-1V7h1zm-1 3v-2h1v3h-2v1h-1v-2zm-2 2v-1h1v1zm1 0h-1v-1h1zm-3-1v-1h2v1zm-3 0v-1h1v1zm2-2v-1h1v1zm-3-1h1v1H8zm1 1h1v1H9zm1-2h1v1h-1zm-2-1h1v1H8zm2 0h1v1h-1zm2-3h1v1h-1zm1 1h1v1h-1z"/>
+              </svg>
+            </div>
+            <p class="text-muted small">Tunjukkan QRIS ini kepada pelanggan. Klik <strong>Selesaikan Transaksi</strong> setelah pembayaran berhasil.</p>
+          </div>
+
+          <!-- Dynamic Card Panel -->
+          <div id="pay-card-panel" style="display:none;">
+            <div class="mb-3">
+              <label class="form-label small">Nomor Referensi / Approval Code Mesin EDC</label>
+              <input type="text" class="form-control" placeholder="Contoh: REF-1092837">
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <label class="form-label small">Catatan Tambahan (Opsional)</label>
+            <input type="text" id="pay-notes" class="form-control form-control-sm" placeholder="Catatan transaksi bila ada...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-success fw-bold px-4 py-2" onclick="executePayment()">
+            <i class="bi bi-check-circle me-1"></i> Selesaikan Transaksi
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Receipt Modal -->
+  <div class="modal fade" id="receiptModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-printer me-2"></i> Struk Belanja Pelanggan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-3 bg-light" id="thermal-receipt-preview">
+          <!-- Populated by pos.js -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+          <button type="button" class="btn btn-primary fw-bold" onclick="printReceipt()">
+            <i class="bi bi-printer me-1"></i> Cetak Struk (Thermal)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 CDN JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Barcode & QR Scanner HTML5 CDN -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="/static/js/sound.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/pos.js"></script>
+
+  <script>
+    // Live clock
+    function updateClock() {
+      const el = document.getElementById("live-clock");
+      if (el) {
+        el.innerText = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>

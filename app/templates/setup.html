@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Setup Wizard - Inisialisasi Toko Tenant</title>
+  
+  <!-- Bootstrap 5 CDN & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    .wizard-card {
+      max-width: 760px;
+      margin: 30px auto;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+    }
+    .step-indicator {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin-bottom: 2rem;
+    }
+    .step-indicator::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 30px;
+      right: 30px;
+      height: 2px;
+      background-color: #e2e8f0;
+      z-index: 1;
+    }
+    .step-bubble {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background-color: #ffffff;
+      border: 2px solid #cbd5e1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #64748b;
+      position: relative;
+      z-index: 2;
+      transition: all 0.3s ease;
+    }
+    .step-item.active .step-bubble {
+      border-color: #2563eb;
+      background-color: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    }
+    .step-item.completed .step-bubble {
+      border-color: #10b981;
+      background-color: #10b981;
+      color: #ffffff;
+    }
+    .step-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #64748b;
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+    .step-item.active .step-title {
+      color: #2563eb;
+    }
+  </style>
+</head>
+<body class="bg-light py-4">
+
+  <div class="container">
+    <div class="card wizard-card border-0">
+      <!-- Wizard Header -->
+      <div class="card-header bg-dark text-white p-4 text-center">
+        <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-2" style="width: 56px; height: 56px;">
+          <i class="bi bi-shop fs-2"></i>
+        </div>
+        <h4 class="fw-bold mb-1">SETUP TOKO RETAIL PAKAIAN</h4>
+        <p class="text-white-50 small mb-0">Inisialisasi database tenant toko pakaian untuk admin: <strong>{% if user %}{{ user.sub }}{% else %}Admin{% endif %}</strong></p>
+      </div>
+
+      <div class="card-body p-4 p-md-5">
+        <!-- Steps Indicator -->
+        <div class="step-indicator">
+          <div class="step-item text-center active" id="indicator-1">
+            <div class="step-bubble mx-auto">1</div>
+            <div class="step-title">Profil Toko</div>
+          </div>
+          <div class="step-item text-center" id="indicator-2">
+            <div class="step-bubble mx-auto">2</div>
+            <div class="step-title">Kebijakan Struk</div>
+          </div>
+          <div class="step-item text-center" id="indicator-3">
+            <div class="step-bubble mx-auto">3</div>
+            <div class="step-title">Kategori & Brand</div>
+          </div>
+          <div class="step-item text-center" id="indicator-4">
+            <div class="step-bubble mx-auto">4</div>
+            <div class="step-title">Konfirmasi</div>
+          </div>
+        </div>
+
+        <form id="wizard-form">
+          <!-- ================= STEP 1: PROFIL TOKO ================= -->
+          <div class="wizard-step" id="step-1">
+            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-shop me-2"></i> Langkah 1: Identitas Toko & Kode Tenant</h5>
+            <p class="text-muted small mb-4">Setiap toko memiliki database mandiri yang aman dan terisolasi.</p>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-7">
+                <label class="form-label fw-bold">Nama Toko Pakaian / Distro</label>
+                <input type="text" id="store-name" class="form-control form-control-lg" placeholder="Contoh: MOMAZ APPAREL & DISTRO" required oninput="handleStoreNameInput(this)">
+              </div>
+              <div class="col-md-5">
+                <label class="form-label small fw-semibold">Kode / Slug Tenant</label>
+                <div class="input-group">
+                  <span class="input-group-text small"><i class="bi bi-database"></i></span>
+                  <input type="text" id="store-slug" class="form-control" placeholder="momaz-apparel" required>
+                </div>
+                <small class="text-muted" style="font-size:0.75rem;">Nama file database: <code>tenants/[slug].db</code></small>
+              </div>
+            </div>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Slogan / Tagline</label>
+                <input type="text" id="store-tagline" class="form-control" placeholder="Casual & Streetwear Fashion">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small fw-semibold">Nomor WhatsApp / Telepon</label>
+                <input type="text" id="store-phone" class="form-control" placeholder="0812-3456-7890">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small fw-semibold">Alamat Lengkap Toko</label>
+              <textarea id="store-address" class="form-control" rows="2" placeholder="Jl. Pemuda No. 45, Jakarta Selatan"></textarea>
+            </div>
+
+            <div class="text-end">
+              <button type="button" class="btn btn-primary px-4 fw-bold" onclick="goToStep(2)">
+                Lanjut ke Kebijakan Struk <i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= STEP 2: KEBIJAKAN STRUK & PPN ================= -->
+          <div class="wizard-step" id="step-2" style="display: none;">
+            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-receipt me-2"></i> Langkah 2: Kebijakan Retur Baju & Pajak PPN</h5>
+            <p class="text-muted small mb-4">Pengaturan ini akan diterapkan pada antarmuka kasir dan pencetakan struk thermal.</p>
+
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Batas Waktu Penukaran Ukuran (Hari)</label>
+                <div class="input-group">
+                  <input type="number" id="store-return-days" class="form-control" value="3" min="1" max="30">
+                  <span class="input-group-text">Hari</span>
+                </div>
+                <small class="text-muted">Maksimal batas waktu pelanggan boleh menukar size/warna pakaian.</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold">Pajak Pertambahan Nilai (PPN)</label>
+                <div class="form-check form-switch mt-2">
+                  <input class="form-check-input" type="checkbox" id="store-tax-enabled">
+                  <label class="form-check-label small" for="store-tax-enabled">Aktifkan PPN Kasir (11%)</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label small fw-semibold">Catatan Footer Struk Kasir</label>
+              <textarea id="store-footer" class="form-control" rows="3" placeholder="Terima kasih telah berbelanja! Barang dapat ditukar maksimal 3 hari kerja dengan membawa struk ini & tag utuh."></textarea>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(1)">
+                <i class="bi bi-arrow-left me-1"></i> Kembali
+              </button>
+              <button type="button" class="btn btn-primary px-4 fw-bold" onclick="goToStep(3)">
+                Lanjut ke Kategori & Brand <i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= STEP 3: KATEGORI & BRAND ================= -->
+          <div class="wizard-step" id="step-3" style="display: none;">
+            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-tags me-2"></i> Langkah 3: Setup Kategori & Brand Pakaian Awal</h5>
+            <p class="text-muted small mb-3">Pilih kategori umum toko Anda atau tambahkan kategori baru sesuai kebutuhan retail Anda. Anda juga dapat mengelola kategori nanti di Backoffice.</p>
+
+            <!-- Form Tambah Kategori Baru -->
+            <div class="card bg-light border-0 mb-4 p-3 rounded-3 shadow-sm">
+              <label class="form-label fw-bold small text-dark mb-1" for="custom-cat-input">
+                <i class="bi bi-plus-circle text-primary me-1"></i> Tambah Kategori Baru:
+              </label>
+              <div class="input-group">
+                <input type="text" id="custom-cat-input" class="form-control" placeholder="Ketik nama kategori (Contoh: Baju Anak, Batik & Kebaya, Sepatu)" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addNewCategory(); }">
+                <button type="button" class="btn btn-primary fw-semibold px-3" onclick="addNewCategory()">
+                  <i class="bi bi-plus-lg me-1"></i> Tambah
+                </button>
+              </div>
+              <small class="text-muted mt-1" style="font-size: 0.78rem;">Ketik nama kategori lalu tekan Enter atau klik tombol Tambah.</small>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label fw-bold mb-0">Daftar Kategori yang Diaktifkan:</label>
+              <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleAllCategories(true)">Pilih Semua</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleAllCategories(false)">Batal Semua</button>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-4" id="categories-checklist">
+              <div class="col-md-6" id="wrapper-cat-1">
+                <div class="form-check p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" value="Atasan Pria" id="cat-1" checked>
+                    <label class="form-check-label fw-semibold text-truncate" for="cat-1">Atasan Pria (Kemeja, Kaos, Polo)</label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6" id="wrapper-cat-2">
+                <div class="form-check p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" value="Atasan Wanita" id="cat-2" checked>
+                    <label class="form-check-label fw-semibold text-truncate" for="cat-2">Atasan Wanita (Blouse, Kemeja, Kaos)</label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6" id="wrapper-cat-3">
+                <div class="form-check p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" value="Bawahan & Celana" id="cat-3" checked>
+                    <label class="form-check-label fw-semibold text-truncate" for="cat-3">Bawahan & Celana (Chino, Jeans, Kulot)</label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6" id="wrapper-cat-4">
+                <div class="form-check p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" value="Outerwear" id="cat-4" checked>
+                    <label class="form-check-label fw-semibold text-truncate" for="cat-4">Outerwear (Jaket, Hoodie, Cardigan)</label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6" id="wrapper-cat-5">
+                <div class="form-check p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" value="Aksesoris" id="cat-5" checked>
+                    <label class="form-check-label fw-semibold text-truncate" for="cat-5">Aksesoris (Topi, Kaos Kaki, Ikat Pinggang)</label>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6" id="wrapper-cat-6">
+                <div class="form-check p-2 border rounded bg-white d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center text-truncate me-2">
+                    <input class="form-check-input ms-0 me-2" type="checkbox" value="Baju Muslim & Gamis" id="cat-6">
+                    <label class="form-check-label fw-semibold text-truncate" for="cat-6">Baju Muslim & Gamis</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold">Merek / Brand Toko Pakaian (Pisahkan dengan koma)</label>
+              <input type="text" id="store-brands" class="form-control" value="Official Brand, Daily Basic, Raw Denim">
+              <small class="text-muted">Contoh: Momaz Official, Erigo, Geoff Max</small>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(2)">
+                <i class="bi bi-arrow-left me-1"></i> Kembali
+              </button>
+              <button type="button" class="btn btn-primary px-4 fw-bold" onclick="goToStep(4)">
+                Lanjut ke Konfirmasi <i class="bi bi-arrow-right ms-1"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- ================= STEP 4: KONFIRMASI ================= -->
+          <div class="wizard-step" id="step-4" style="display: none;">
+            <h5 class="fw-bold text-success mb-3"><i class="bi bi-check-circle me-2"></i> Langkah 4: Konfirmasi & Inisialisasi Database Tenant</h5>
+            <p class="text-muted small mb-4">Sistem akan membuat database SQLite mandiri untuk toko retail pakaian Anda.</p>
+
+            <div class="p-3 bg-light rounded border mb-4">
+              <div class="row g-2">
+                <div class="col-4 text-muted small">Nama Toko:</div>
+                <div class="col-8 fw-bold" id="summary-store-name">-</div>
+
+                <div class="col-4 text-muted small">File Database:</div>
+                <div class="col-8 fw-bold text-primary" id="summary-db-file">-</div>
+
+                <div class="col-4 text-muted small">Batas Retur Baju:</div>
+                <div class="col-8" id="summary-return-days">-</div>
+
+                <div class="col-4 text-muted small">Kategori Terpilih:</div>
+                <div class="col-8" id="summary-categories">-</div>
+
+                <div class="col-4 text-muted small">Brand Terdaftar:</div>
+                <div class="col-8" id="summary-brands">-</div>
+              </div>
+            </div>
+
+            <div class="alert alert-info small d-flex align-items-center mb-4">
+              <i class="bi bi-info-circle-fill fs-4 me-3 text-primary"></i>
+              <div>
+                Database toko ini akan tersimpan permanen. Anda dapat langsung mengelola produk, varian ukuran/warna, dan kasir POS tanpa pernah kembali ke setup wizard lagi.
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(3)">
+                <i class="bi bi-arrow-left me-1"></i> Kembali
+              </button>
+              <button type="button" id="btn-submit-init" class="btn btn-success px-5 fw-bold py-2" onclick="submitInitialization()">
+                <i class="bi bi-rocket-takeoff me-2"></i> Buat Database Toko Sekarang
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/sound.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script>
+    let currentStep = 1;
+
+    function addNewCategory() {
+      const input = document.getElementById("custom-cat-input");
+      const name = input.value.trim();
+      if (!name) {
+        showToast("Ketik nama kategori yang ingin ditambahkan.", "warning");
+        input.focus();
+        return;
+      }
+
+      // Check if already exists in checklist (case-insensitive)
+      const existing = Array.from(document.querySelectorAll("#categories-checklist input[type='checkbox']"))
+        .map(el => el.value.toLowerCase().trim());
+      if (existing.includes(name.toLowerCase())) {
+        showToast(`Kategori "${name}" sudah ada dalam daftar.`, "info");
+        input.focus();
+        return;
+      }
+
+      const id = "cat-custom-" + Date.now();
+      const col = document.createElement("div");
+      col.className = "col-md-6";
+      col.id = "wrapper-" + id;
+
+      const card = document.createElement("div");
+      card.className = "form-check p-2 border rounded bg-white d-flex align-items-center justify-content-between";
+
+      const left = document.createElement("div");
+      left.className = "d-flex align-items-center text-truncate me-2";
+
+      const cb = document.createElement("input");
+      cb.className = "form-check-input ms-0 me-2";
+      cb.type = "checkbox";
+      cb.value = name;
+      cb.id = id;
+      cb.checked = true;
+
+      const label = document.createElement("label");
+      label.className = "form-check-label fw-semibold text-truncate";
+      label.htmlFor = id;
+
+      const badge = document.createElement("span");
+      badge.className = "badge bg-success-subtle text-success me-1";
+      badge.textContent = "Baru";
+
+      label.appendChild(badge);
+      label.appendChild(document.createTextNode(" " + name));
+
+      left.appendChild(cb);
+      left.appendChild(label);
+
+      const delBtn = document.createElement("button");
+      delBtn.type = "button";
+      delBtn.className = "btn btn-sm btn-link text-danger p-0 ms-1 flex-shrink-0";
+      delBtn.title = "Hapus kategori ini";
+      delBtn.innerHTML = '<i class="bi bi-x-circle fs-6"></i>';
+      delBtn.onclick = function() { removeCategory(id); };
+
+      card.appendChild(left);
+      card.appendChild(delBtn);
+      col.appendChild(card);
+
+      document.getElementById("categories-checklist").appendChild(col);
+      input.value = "";
+      input.focus();
+
+      posSound.beep(750, 0.08);
+      showToast(`Kategori "${name}" berhasil ditambahkan!`, "success");
+    }
+
+    function removeCategory(id) {
+      const el = document.getElementById("wrapper-" + id);
+      if (el) {
+        el.remove();
+        showToast("Kategori dihapus.", "info");
+      }
+    }
+
+    function toggleAllCategories(select) {
+      const checkboxes = document.querySelectorAll("#categories-checklist input[type='checkbox']");
+      checkboxes.forEach(cb => cb.checked = select);
+    }
+
+    function handleStoreNameInput(input) {
+      const slugInput = document.getElementById("store-slug");
+      const cleanSlug = input.value.toLowerCase().trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-');
+      slugInput.value = cleanSlug;
+    }
+
+    function goToStep(step) {
+      if (step > currentStep) {
+        if (currentStep === 1) {
+          const storeName = document.getElementById("store-name").value.trim();
+          const storeSlug = document.getElementById("store-slug").value.trim();
+          if (!storeName || !storeSlug) {
+            showToast("Harap isi nama toko pakaian dan kode tenant.", "warning");
+            return;
+          }
+        }
+      }
+
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`step-${i}`).style.display = "none";
+        const ind = document.getElementById(`indicator-${i}`);
+        ind.classList.remove("active");
+        if (i < step) ind.classList.add("completed");
+        else ind.classList.remove("completed");
+      }
+
+      document.getElementById(`step-${step}`).style.display = "block";
+      document.getElementById(`indicator-${step}`).classList.add("active");
+      currentStep = step;
+
+      if (step === 4) {
+        const storeName = document.getElementById("store-name").value.trim();
+        const storeSlug = document.getElementById("store-slug").value.trim();
+        document.getElementById("summary-store-name").innerText = storeName;
+        document.getElementById("summary-db-file").innerText = `tenants/${storeSlug}.db`;
+        document.getElementById("summary-return-days").innerText = `${document.getElementById("store-return-days").value} Hari`;
+
+        const checkedCats = Array.from(document.querySelectorAll("#categories-checklist input:checked")).map(el => el.value);
+        document.getElementById("summary-categories").innerText = checkedCats.join(", ") || "(Tidak ada)";
+
+        const brands = document.getElementById("store-brands").value.split(",").map(b => b.trim()).filter(b => b);
+        document.getElementById("summary-brands").innerText = brands.join(", ") || "(Tidak ada)";
+      }
+    }
+
+    async function submitInitialization() {
+      const btn = document.getElementById("btn-submit-init");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Membuat Database Toko...`;
+
+      const storeName = document.getElementById("store-name").value.trim();
+      const storeSlug = document.getElementById("store-slug").value.trim();
+      const checkedCats = Array.from(document.querySelectorAll("#categories-checklist input:checked")).map(el => el.value);
+      const brands = document.getElementById("store-brands").value.split(",").map(b => b.trim()).filter(b => b);
+
+      const payload = {
+        store_name: storeName,
+        slug: storeSlug,
+        tagline: document.getElementById("store-tagline").value.trim(),
+        address: document.getElementById("store-address").value.trim(),
+        phone: document.getElementById("store-phone").value.trim(),
+        return_policy_days: parseInt(document.getElementById("store-return-days").value) || 3,
+        tax_rate: document.getElementById("store-tax-enabled").checked ? 11.0 : 0.0,
+        is_tax_enabled: document.getElementById("store-tax-enabled").checked,
+        receipt_footer: document.getElementById("store-footer").value.trim() || null,
+        categories: checkedCats,
+        brands: brands
+      };
+
+      try {
+        const res = await api.post("/api/tenants/setup", payload);
+        posSound.success();
+        showToast("Toko berhasil dibuat! Mengalihkan ke Backoffice...", "success");
+        setTimeout(() => {
+          window.location.href = "/backoffice/dashboard";
+        }, 800);
+      } catch (err) {
+        posSound.error();
+        showToast(err.message, "error");
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-rocket-takeoff me-2"></i> Buat Database Toko Sekarang`;
+      }
+    }
+  </script>
+</body>
+</html>

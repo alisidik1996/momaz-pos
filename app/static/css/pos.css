@@ -1,0 +1,251 @@
+/* POS Cashier Modern Interface */
+.pos-wrapper {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #f1f5f9;
+}
+
+.pos-header {
+  height: 60px;
+  background-color: #0f172a;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.pos-main {
+  display: flex;
+  height: calc(100vh - 60px);
+  width: 100%;
+}
+
+/* Left Section: Product Catalog & Fast Search */
+.pos-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 2px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.pos-search-bar {
+  padding: 1rem 1.25rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.pos-categories {
+  padding: 0.5rem 1.25rem;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.pos-categories .btn {
+  border-radius: 20px;
+  padding: 0.35rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.pos-products-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1rem;
+  align-content: start;
+}
+
+.product-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.product-card:hover {
+  transform: translateY(-2px);
+  border-color: #3b82f6;
+  box-shadow: 0 6px 15px rgba(59, 130, 246, 0.12);
+}
+
+.product-card .img-placeholder {
+  height: 90px;
+  background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.product-card .price {
+  font-weight: 700;
+  color: #1e293b;
+  font-size: 1.05rem;
+}
+
+/* Right Section: Active Cart */
+.pos-right {
+  width: 440px;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -2px 0 10px rgba(0,0,0,0.03);
+}
+
+.cart-header {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fafafa;
+}
+
+.cart-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+}
+
+.cart-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.5rem;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.cart-item:last-child {
+  border-bottom: none;
+}
+
+.qty-control {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.qty-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+}
+
+.qty-btn:hover {
+  background: #e2e8f0;
+}
+
+.cart-footer {
+  border-top: 2px solid #e2e8f0;
+  padding: 1rem 1.25rem;
+  background-color: #f8fafc;
+}
+
+.cart-total-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  font-size: 0.95rem;
+  color: #64748b;
+}
+
+.cart-grand-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #e2e8f0;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* Quick Cash Buttons */
+.quick-cash-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.quick-cash-btn {
+  padding: 0.5rem 0.25rem;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border-radius: 8px;
+}
+
+/* Shortcuts Footer Bar */
+.pos-shortcuts-bar {
+  background-color: #1e293b;
+  color: #cbd5e1;
+  padding: 0.35rem 1.25rem;
+  font-size: 0.8rem;
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+}
+
+.shortcut-badge {
+  background-color: #334155;
+  color: #38bdf8;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-right: 0.3rem;
+}
+
+/* Clothing Variant Selection Modal */
+.variant-bubble {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.variant-bubble:hover {
+  border-color: #2563eb;
+  background-color: #eff6ff;
+}
+
+.variant-bubble.selected {
+  border-color: #2563eb;
+  background-color: #2563eb;
+  color: #ffffff;
+}
+
+.variant-bubble.out-of-stock {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f1f5f9;
+  text-decoration: line-through;
+}

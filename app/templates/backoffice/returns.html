@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Retur & Tukar Pakaian{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Retur & Penukaran Ukuran / Warna</h3>
+      <p class="text-muted small mb-0">Layanan penukaran pakaian pelanggan (tukar size/warna), retur barang cacat, dan penyesuaian stok otomatis.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-warning fw-semibold" data-bs-toggle="modal" data-bs-target="#newReturnModal">
+        <i class="bi bi-arrow-left-right me-1"></i> Proses Penukaran Baru
+      </button>
+    </div>
+  </div>
+
+  <!-- Returns History Card -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3">
+      <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i> Riwayat Penukaran & Retur</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="returns-table">
+          <thead>
+            <tr>
+              <th>No. Retur</th>
+              <th>No. Invoice Asal</th>
+              <th>Waktu</th>
+              <th>Alasan Retur</th>
+              <th>Produk Pengganti</th>
+              <th>Pengembalian Dana</th>
+              <th>Catatan</th>
+            </tr>
+          </thead>
+          <tbody id="returns-table-body">
+            <!-- Populated by backoffice.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Return & Exchange Modal -->
+<div class="modal fade" id="newReturnModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title fw-bold"><i class="bi bi-arrow-left-right me-2"></i> Form Retur / Penukaran Produk</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="handleReturnSubmit(event)">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nomor Invoice Asal</label>
+            <div class="input-group">
+              <input type="text" id="return-invoice-input" class="form-control" placeholder="Contoh: INV-20261027-0001" required>
+              <button type="button" class="btn btn-primary" onclick="lookupInvoiceForReturn()">
+                <i class="bi bi-search me-1"></i> Cari Invoice
+              </button>
+            </div>
+          </div>
+
+          <div id="invoice-lookup-result" style="display:none;" class="p-3 bg-light rounded border mb-3">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="fw-bold" id="lookup-inv-no">-</span>
+              <span class="badge bg-success" id="lookup-inv-date">-</span>
+            </div>
+            <div class="small text-muted mb-2">Pilih item yang dikembalikan oleh pelanggan:</div>
+            <div id="lookup-items-selection"></div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Alasan Penukaran</label>
+              <select id="return-reason" class="form-select">
+                <option value="wrong_item">Salah Barang / Ukuran</option>
+                <option value="defect">Cacat / Rusak</option>
+                <option value="change_mind">Pengembalian Dana (Batal)</option>
+                <option value="other">Lainnya</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-bold">Scan Barcode / SKU Produk Pengganti (Jika Tukar)</label>
+              <input type="text" id="return-exchange-barcode" class="form-control" placeholder="Scan barcode produk pengganti...">
+              <small class="text-muted">Kosongkan jika hanya retur / uang kembali</small>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small">Catatan Kasir</label>
+            <input type="text" id="return-notes" class="form-control" placeholder="Kondisi tag utuh, nota fisik ada...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-warning fw-bold px-4">Proses Retur / Penukaran</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let targetOrder = null;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadReturnsHistory();
+  });
+
+  async function lookupInvoiceForReturn() {
+    const inv = document.getElementById("return-invoice-input").value.trim();
+    if (!inv) return;
+
+    try {
+      const orders = await api.get(`/api/sales/orders?limit=100`);
+      targetOrder = orders.find(o => o.invoice_number === inv);
+      if (!targetOrder) {
+        showToast("Invoice tidak ditemukan.", "error");
+        return;
+      }
+
+      document.getElementById("lookup-inv-no").innerText = targetOrder.invoice_number;
+      document.getElementById("lookup-inv-date").innerText = formatDate(targetOrder.created_at);
+
+      const itemsContainer = document.getElementById("lookup-items-selection");
+      itemsContainer.innerHTML = targetOrder.items.map(it => `
+        <div class="form-check p-2 border rounded mb-1 bg-white">
+          <input class="form-check-input ms-0 me-2" type="checkbox" data-pid="${it.product_id || ''}" data-vid="${it.variant_id || ''}" data-price="${it.unit_price}" id="chk-item-${it.id}" checked>
+          <label class="form-check-label fw-semibold" for="chk-item-${it.id}">
+            ${it.product_name}${it.variant_info ? ` (${it.variant_info})` : ''} - ${formatRupiah(it.unit_price)} x ${it.quantity}
+          </label>
+        </div>
+      `).join("");
+
+      document.getElementById("invoice-lookup-result").style.display = "block";
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function handleReturnSubmit(e) {
+    e.preventDefault();
+    if (!targetOrder) {
+      showToast("Harap cari nomor invoice terlebih dahulu.", "warning");
+      return;
+    }
+
+    const checkboxes = document.querySelectorAll("#lookup-items-selection input[type='checkbox']:checked");
+    if (checkboxes.length === 0) {
+      showToast("Pilih minimal satu item yang dikembalikan.", "warning");
+      return;
+    }
+
+    const items = [];
+    checkboxes.forEach(chk => {
+      const pid = chk.dataset.pid ? parseInt(chk.dataset.pid) : null;
+      const vid = chk.dataset.vid ? parseInt(chk.dataset.vid) : null;
+      const prc = parseFloat(chk.dataset.price);
+      items.push({
+        product_id: pid,
+        variant_id: vid,
+        quantity: 1,
+        refund_subtotal: prc
+      });
+    });
+
+    const exchangeBarcode = document.getElementById("return-exchange-barcode").value.trim();
+    let exchangeProductId = null;
+    let exchangeVariantId = null;
+    if (exchangeBarcode) {
+      try {
+        const exItem = await api.get(`/api/catalog/scan/${exchangeBarcode}`);
+        exchangeProductId = exItem.product_id;
+        exchangeVariantId = exItem.variant_id;
+      } catch (err) {
+        showToast("Barcode produk pengganti tidak valid!", "error");
+        return;
+      }
+    }
+
+    const payload = {
+      order_id: targetOrder.id,
+      reason: document.getElementById("return-reason").value,
+      items: items,
+      exchange_product_id: exchangeProductId,
+      exchange_variant_id: exchangeVariantId,
+      notes: document.getElementById("return-notes").value
+    };
+
+    try {
+      const res = await api.post("/api/returns", payload);
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("newReturnModal")).hide();
+      showToast(`Penukaran ${res.return_number} berhasil diproses! Stok produk telah diperbarui.`, "success");
+      loadReturnsHistory();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+</script>
+{% endblock %}

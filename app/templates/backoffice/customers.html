@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Pelanggan & CRM{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Daftar Pelanggan (CRM Toko)</h3>
+      <p class="text-muted small mb-0">Kelola database member, nomor telepon, alamat, riwayat kunjungan & akumulasi belanja pelanggan.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
+        <i class="bi bi-person-plus me-1"></i> Tambah Pelanggan Baru
+      </button>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="customers-table">
+          <thead>
+            <tr>
+              <th>Nama Pelanggan</th>
+              <th>Nomor Telepon</th>
+              <th>Email</th>
+              <th>Alamat</th>
+              <th>Total Belanja</th>
+              <th>Kunjungan</th>
+              <th>Terdaftar</th>
+            </tr>
+          </thead>
+          <tbody id="customers-table-body">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Customer Modal -->
+<div class="modal fade" id="newCustomerModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold">Tambah Member / Pelanggan</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="handleCustomerSubmit(event)">
+        <div class="modal-body p-4">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nama Lengkap</label>
+            <input type="text" id="cust-name" class="form-control" placeholder="Contoh: Amanda Putri" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nomor Handphone / WhatsApp</label>
+            <input type="text" id="cust-phone" class="form-control" placeholder="08123456789">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Email</label>
+            <input type="email" id="cust-email" class="form-control" placeholder="amanda@gmail.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Alamat</label>
+            <textarea id="cust-address" class="form-control" rows="2" placeholder="Alamat domisili..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary fw-bold px-4">Simpan Pelanggan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    loadCustomers();
+  });
+
+  async function loadCustomers() {
+    try {
+      const customers = await api.get("/api/customers");
+      const tbody = document.getElementById("customers-table-body");
+      if (!tbody) return;
+
+      if (customers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">Belum ada pelanggan terdaftar.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = customers.map(c => `
+        <tr>
+          <td class="fw-bold"><i class="bi bi-person me-2 text-primary"></i>${c.name}</td>
+          <td><code>${c.phone || '-'}</code></td>
+          <td>${c.email || '-'}</td>
+          <td><small class="text-muted">${c.address || '-'}</small></td>
+          <td class="fw-bold text-success">${formatRupiah(c.total_spend)}</td>
+          <td><span class="badge bg-light text-dark border">${c.visit_count}x belanja</span></td>
+          <td><small>${formatDate(c.created_at)}</small></td>
+        </tr>
+      `).join("");
+
+      if (typeof TableManager !== "undefined") {
+        TableManager.bind(tbody.closest("table"));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function handleCustomerSubmit(e) {
+    e.preventDefault();
+    const name = document.getElementById("cust-name").value.trim();
+    const phone = document.getElementById("cust-phone").value.trim();
+    const email = document.getElementById("cust-email").value.trim();
+    const address = document.getElementById("cust-address").value.trim();
+
+    try {
+      await api.post("/api/customers", { name, phone, email, address });
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("newCustomerModal")).hide();
+      showToast("Pelanggan baru berhasil ditambahkan!", "success");
+      loadCustomers();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,899 @@
+{% extends "base.html" %}
+
+{% block title %}Member & Affiliate{% endblock %}
+
+{% block extra_css %}
+<style>
+  /* Member Card Preview Styles */
+  .member-card-container {
+    max-width: 420px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .member-card-container::before {
+    content: "";
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: rgba(59, 130, 246, 0.15);
+    border-radius: 50%;
+  }
+  .member-card-badge {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+  .member-card-barcode-box {
+    background: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    margin-top: 16px;
+    text-align: center;
+  }
+  .member-card-barcode-box svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    #printable-member-card, #printable-member-card * {
+      visibility: visible;
+    }
+    #printable-member-card {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      max-width: 450px;
+      margin: 0 !important;
+      box-shadow: none !important;
+      border: 1px solid #ccc;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1"><i class="bi bi-people-fill text-primary me-2"></i>Member & Affiliate</h3>
+      <p class="text-muted small mb-0">Kelola data kartu member, generate barcode 12 digit, atur persentase/nominal diskon member, dan komisi affiliate per produk.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-primary" onclick="openNewMemberModal()">
+        <i class="bi bi-person-plus me-1"></i> Tambah Member Baru
+      </button>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded shadow-sm border" id="memberAffiliateTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active fw-bold py-2 d-flex align-items-center justify-content-center gap-2" id="tab-members-btn" data-bs-toggle="tab" data-bs-target="#tab-members-content" type="button" role="tab">
+        <i class="bi bi-person-badge fs-5"></i> 1. Daftar Member
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-bold py-2 d-flex align-items-center justify-content-center gap-2" id="tab-discounts-btn" data-bs-toggle="tab" data-bs-target="#tab-discounts-content" type="button" role="tab">
+        <i class="bi bi-percent fs-5"></i> 2. Diskon Belanja Member
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link fw-bold py-2 d-flex align-items-center justify-content-center gap-2" id="tab-commissions-btn" data-bs-toggle="tab" data-bs-target="#tab-commissions-content" type="button" role="tab">
+        <i class="bi bi-cash-coin fs-5"></i> 3. Komisi Affiliate Member
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab Contents -->
+  <div class="tab-content" id="memberAffiliateTabContent">
+    
+    <!-- ==================== TAB 1: MEMBERS LIST ==================== -->
+    <div class="tab-pane fade show active" id="tab-members-content" role="tabpanel">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="members-table">
+              <thead class="table-light">
+                <tr>
+                  <th>ID Member</th>
+                  <th class="no-sort">Barcode Batang</th>
+                  <th>Nama Member</th>
+                  <th>No. Handphone</th>
+                  <th>Total Belanja</th>
+                  <th>Komisi Affiliate</th>
+                  <th>Terdaftar</th>
+                  <th class="text-end no-sort">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="members-table-body">
+                <tr><td colspan="8" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 2: MEMBER DISCOUNTS ==================== -->
+    <div class="tab-pane fade" id="tab-discounts-content" role="tabpanel">
+      <div class="alert alert-info d-flex align-items-center justify-content-between py-2 mb-3 shadow-sm border-0">
+        <div class="d-flex align-items-center gap-2 small">
+          <i class="bi bi-info-circle fs-5"></i>
+          <div>
+            <strong>Pengaturan Diskon Member:</strong> Tentukan potongan harga khusus yang otomatis diberikan saat member berbelanja di kasir. Bisa berupa <strong>Persentase (%)</strong> atau <strong>Nominal (Rp)</strong> per produk.
+          </div>
+        </div>
+        <button class="btn btn-sm btn-success fw-bold text-nowrap ms-2" onclick="saveAllDiscountRules()">
+          <i class="bi bi-check2-all me-1"></i> Simpan Semua Diskon
+        </button>
+      </div>
+
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="discounts-table">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 300px;">Produk Pakaian</th>
+                  <th>SKU / Barcode</th>
+                  <th>Harga Normal</th>
+                  <th style="width: 160px;">Tipe Diskon</th>
+                  <th style="width: 180px;">Nilai Diskon</th>
+                  <th>Harga Member</th>
+                  <th class="text-end no-sort">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="discounts-table-body">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: AFFILIATE COMMISSIONS ==================== -->
+    <div class="tab-pane fade" id="tab-commissions-content" role="tabpanel">
+      <div class="alert alert-success d-flex align-items-center justify-content-between py-2 mb-3 shadow-sm border-0">
+        <div class="d-flex align-items-center gap-2 small">
+          <i class="bi bi-cash-stack fs-5"></i>
+          <div>
+            <strong>Program Komisi Affiliate:</strong> Berikan komisi kepada member saat kartu member mereka digunakan untuk transaksi belanja di kasir. Komisi dapat dihitung berupa <strong>Persentase (%)</strong> dari harga jual atau <strong>Nominal (Rp)</strong> tetap per item yang terjual.
+          </div>
+        </div>
+        <button class="btn btn-sm btn-primary fw-bold text-nowrap ms-2" onclick="saveAllCommissionRules()">
+          <i class="bi bi-check2-all me-1"></i> Simpan Semua Komisi
+        </button>
+      </div>
+
+      <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="commissions-table">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 300px;">Produk Pakaian</th>
+                  <th>SKU / Barcode</th>
+                  <th>Harga Jual</th>
+                  <th style="width: 160px;">Tipe Komisi</th>
+                  <th style="width: 180px;">Nilai Komisi</th>
+                  <th>Estimasi Komisi / Pcs</th>
+                  <th class="text-end no-sort">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="commissions-table-body">
+                <!-- Populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Commission History Log -->
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3">
+          <h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-secondary me-2"></i>Riwayat Komisi Transaksi Affiliate</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="commission-logs-table">
+              <thead class="table-light">
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Member Penerima</th>
+                  <th>ID Member</th>
+                  <th>Jumlah Komisi</th>
+                  <th>Catatan / Invoice</th>
+                </tr>
+              </thead>
+              <tbody id="commission-logs-table-body">
+                <tr><td colspan="5" class="text-center text-muted py-4">Belum ada riwayat transaksi komisi.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- 1. Modal Tambah / Edit Member -->
+<div class="modal fade" id="memberModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold" id="memberModalTitle"><i class="bi bi-person-badge me-2"></i>Tambah Member Baru</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="handleMemberFormSubmit(event)">
+        <div class="modal-body p-4">
+          <input type="hidden" id="modal-member-id-pk" value="">
+
+          <!-- 12-Digit Member ID with Barcode Preview -->
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label fw-bold mb-0">ID Member (12 Digit Alfanumerik)</label>
+              <button type="button" class="btn btn-sm btn-outline-primary py-0" onclick="regenerateMemberId()" title="Acak Ulang ID Member">
+                <i class="bi bi-arrow-repeat me-1"></i> Acak Ulang
+              </button>
+            </div>
+            <div class="input-group">
+              <span class="input-group-text bg-light fw-bold"><i class="bi bi-upc-scan"></i></span>
+              <input type="text" id="modal-member-code" class="form-control font-monospace fw-bold fs-5 text-primary text-uppercase" maxlength="12" required oninput="renderModalBarcode(this.value)">
+            </div>
+            <small class="text-muted" style="font-size:0.75rem;">ID unik 12 digit acak yang di-generate menjadi barcode batang.</small>
+          </div>
+
+          <!-- Live Barcode Preview in Modal -->
+          <div class="p-2 border rounded bg-light text-center mb-3">
+            <svg id="modal-barcode-preview" style="max-width: 100%; height: 60px;"></svg>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nama Lengkap Member <span class="text-danger">*</span></label>
+            <input type="text" id="modal-member-name" class="form-control" placeholder="Contoh: Rian Pratama" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Nomor Handphone / WhatsApp <span class="text-danger">*</span></label>
+            <input type="text" id="modal-member-phone" class="form-control" placeholder="Contoh: 081234567890" required>
+            <small class="text-muted" style="font-size:0.75rem;">Nomor ini bisa digunakan kasir saat scan/cari member secara manual.</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small">Alamat Email</label>
+            <input type="email" id="modal-member-email" class="form-control" placeholder="member@gmail.com">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small">Alamat Domisili</label>
+            <textarea id="modal-member-address" class="form-control" rows="2" placeholder="Alamat lengkap..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-primary fw-bold px-4">
+            <i class="bi bi-save me-1"></i> Simpan Member
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Modal Cetak Kartu Member Barcode -->
+<div class="modal fade" id="printCardModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold"><i class="bi bi-printer me-2"></i>Kartu Member & Barcode</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4 bg-light text-center">
+        
+        <!-- Printable Card Element -->
+        <div id="printable-member-card" class="member-card-container text-start">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h5 class="fw-bold mb-0 text-white d-flex align-items-center gap-2">
+                <i class="bi bi-shop text-primary"></i> <span class="app-store-name">Momaz</span>
+              </h5>
+              <small class="text-white-50" style="font-size:0.7rem;">KARTU MEMBER & AFFILIATE</small>
+            </div>
+            <span class="member-card-badge"><i class="bi bi-gem me-1"></i> VIP MEMBER</span>
+          </div>
+
+          <div class="mb-3">
+            <div class="text-white-50 small" style="font-size:0.75rem;">NAMA MEMBER</div>
+            <div class="fs-5 fw-bold text-white text-truncate" id="card-preview-name">-</div>
+            <div class="small text-white-50" id="card-preview-phone">-</div>
+          </div>
+
+          <div class="member-card-barcode-box">
+            <div class="d-flex justify-content-between align-items-center px-1 mb-1">
+              <span class="text-muted" style="font-size:0.65rem; font-weight:600;">SCAN BARCODE KASIR</span>
+              <strong class="font-monospace text-dark" id="card-preview-code-text" style="font-size:0.85rem;">-</strong>
+            </div>
+            <svg id="card-preview-barcode-svg"></svg>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button type="button" class="btn btn-primary fw-bold" onclick="printMemberCard()">
+          <i class="bi bi-printer me-1"></i> Cetak Kartu Member
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- JsBarcode CDN for generating Code128 Barcodes -->
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+<script>
+  let allMembers = [];
+  let allProducts = [];
+
+  document.addEventListener("DOMContentLoaded", async () => {
+    await loadMembers();
+    await loadProductsCatalog();
+    await loadCommissionLogs();
+  });
+
+  // 1. Members Management
+  async function loadMembers() {
+    try {
+      allMembers = await api.get("/api/customers");
+      renderMembersTable(allMembers);
+    } catch (err) {
+      console.error(err);
+      showToast("Gagal memuat data member", "error");
+    }
+  }
+
+  function renderMembersTable(members) {
+    const tbody = document.getElementById("members-table-body");
+    const countBadge = document.getElementById("member-count-badge");
+    if (countBadge) countBadge.innerText = members.length;
+    if (!tbody) return;
+
+    if (members.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5"><i class="bi bi-people fs-2 d-block mb-2"></i>Belum ada data member terdaftar.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = members.map(m => {
+      const code = m.member_id || '-';
+      return `
+        <tr>
+          <td>
+            <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-monospace fs-6 px-2 py-1">
+              ${code}
+            </span>
+          </td>
+          <td>
+            <div style="cursor:pointer;" onclick="openPrintCardModal(${m.id})" title="Klik untuk perbesar/cetak">
+              <svg class="member-row-barcode" id="barcode-row-${m.id}" style="height: 36px; max-width: 140px;"></svg>
+            </div>
+          </td>
+          <td class="fw-bold">${m.name}</td>
+          <td><code>${m.phone || '-'}</code></td>
+          <td class="fw-bold text-success">${formatRupiah(m.total_spend)}</td>
+          <td class="fw-bold text-primary">
+            <i class="bi bi-cash-coin me-1"></i>${formatRupiah(m.total_commission || 0)}
+          </td>
+          <td><small class="text-muted">${formatDate(m.created_at)}</small></td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button class="btn btn-outline-primary" onclick="openPrintCardModal(${m.id})" title="Cetak Kartu Member">
+                <i class="bi bi-card-heading me-1"></i> Kartu
+              </button>
+              <button class="btn btn-outline-secondary" onclick="openEditMemberModal(${m.id})" title="Edit Data Member">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-outline-danger" onclick="deleteMember(${m.id}, '${m.name.replace(/'/g, "\\'")}')" title="Hapus Member">
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Render SVG Barcodes for each row using JsBarcode
+    members.forEach(m => {
+      if (m.member_id) {
+        try {
+          JsBarcode(`#barcode-row-${m.id}`, m.member_id, {
+            format: "CODE128",
+            displayValue: false,
+            margin: 0,
+            height: 35
+          });
+        } catch (e) {
+          console.warn("Barcode render error:", e);
+        }
+      }
+    });
+
+    if (typeof TableManager !== "undefined") {
+      TableManager.bind(tbody.closest("table"));
+    }
+  }
+
+  function handleMemberSearch(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      renderMembersTable(allMembers);
+      return;
+    }
+    const filtered = allMembers.filter(m => 
+      (m.name && m.name.toLowerCase().includes(q)) ||
+      (m.phone && m.phone.toLowerCase().includes(q)) ||
+      (m.member_id && m.member_id.toLowerCase().includes(q))
+    );
+    renderMembersTable(filtered);
+  }
+
+  async function openNewMemberModal() {
+    document.getElementById("modal-member-id-pk").value = "";
+    document.getElementById("modal-member-name").value = "";
+    document.getElementById("modal-member-phone").value = "";
+    document.getElementById("modal-member-email").value = "";
+    document.getElementById("modal-member-address").value = "";
+    document.getElementById("memberModalTitle").innerHTML = `<i class="bi bi-person-badge me-2"></i>Tambah Member Baru`;
+
+    // Fetch fresh 12-digit random alphanumeric ID
+    await regenerateMemberId();
+
+    new bootstrap.Modal(document.getElementById("memberModal")).show();
+  }
+
+  function openEditMemberModal(id) {
+    const m = allMembers.find(x => x.id === id);
+    if (!m) return;
+
+    document.getElementById("modal-member-id-pk").value = m.id;
+    document.getElementById("modal-member-name").value = m.name;
+    document.getElementById("modal-member-phone").value = m.phone || "";
+    document.getElementById("modal-member-email").value = m.email || "";
+    document.getElementById("modal-member-address").value = m.address || "";
+    document.getElementById("modal-member-code").value = m.member_id || "";
+    document.getElementById("memberModalTitle").innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Data Member`;
+
+    renderModalBarcode(m.member_id || "");
+
+    new bootstrap.Modal(document.getElementById("memberModal")).show();
+  }
+
+  async function regenerateMemberId() {
+    try {
+      const res = await api.get("/api/customers/generate-member-id");
+      const codeInput = document.getElementById("modal-member-code");
+      codeInput.value = res.member_id;
+      renderModalBarcode(res.member_id);
+    } catch (e) {
+      // Fallback generator client-side (12 uppercase alphanumeric)
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+      let code = "";
+      for (let i = 0; i < 12; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      document.getElementById("modal-member-code").value = code;
+      renderModalBarcode(code);
+    }
+  }
+
+  function renderModalBarcode(val) {
+    val = (val || "").trim().toUpperCase();
+    if (!val) return;
+    try {
+      JsBarcode("#modal-barcode-preview", val, {
+        format: "CODE128",
+        displayValue: true,
+        fontSize: 14,
+        margin: 5,
+        height: 40
+      });
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
+  async function handleMemberFormSubmit(e) {
+    e.preventDefault();
+    const pk = document.getElementById("modal-member-id-pk").value;
+    const name = document.getElementById("modal-member-name").value.trim();
+    const phone = document.getElementById("modal-member-phone").value.trim();
+    const email = document.getElementById("modal-member-email").value.trim();
+    const address = document.getElementById("modal-member-address").value.trim();
+    const member_id = document.getElementById("modal-member-code").value.trim().toUpperCase();
+
+    if (!member_id || member_id.length !== 12) {
+      showToast("ID Member harus berisi tepat 12 digit alfabet dan angka!", "warning");
+      return;
+    }
+
+    try {
+      if (pk) {
+        await api.put(`/api/customers/${pk}`, { name, phone, email, address, member_id });
+        showToast("Data member berhasil diperbarui!", "success");
+      } else {
+        await api.post("/api/customers", { name, phone, email, address, member_id });
+        showToast("Member baru berhasil didaftarkan!", "success");
+      }
+
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("memberModal")).hide();
+      await loadMembers();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function deleteMember(id, name) {
+    const ok = await showAppConfirm(
+      `Apakah Anda yakin ingin menghapus member "${name}"?\nData riwayat transaksi belanja yang pernah dilakukan member akan tetap tersimpan aman.`,
+      "Konfirmasi Hapus Member",
+      { confirmText: "Ya, Hapus Member", confirmBtnClass: "btn-danger" }
+    );
+    if (!ok) return;
+    try {
+      const res = await api.delete(`/api/customers/${id}`);
+      showToast(res.message || "Member berhasil dihapus!", "success");
+      await loadMembers();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  // Card Modal Print Preview
+  function openPrintCardModal(id) {
+    const m = allMembers.find(x => x.id === id);
+    if (!m) return;
+
+    document.getElementById("card-preview-name").innerText = m.name;
+    document.getElementById("card-preview-phone").innerText = m.phone ? `No. HP: ${m.phone}` : '-';
+    document.getElementById("card-preview-code-text").innerText = m.member_id || '-';
+
+    if (m.member_id) {
+      JsBarcode("#card-preview-barcode-svg", m.member_id, {
+        format: "CODE128",
+        displayValue: false,
+        height: 60,
+        margin: 0
+      });
+    }
+
+    new bootstrap.Modal(document.getElementById("printCardModal")).show();
+  }
+
+  function printMemberCard() {
+    window.print();
+  }
+
+  // 2. Member Discounts & 3. Commissions Rules
+  async function loadProductsCatalog() {
+    try {
+      allProducts = await api.get("/api/catalog/products");
+      renderDiscountsTable(allProducts);
+      renderCommissionsTable(allProducts);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function renderDiscountsTable(products) {
+    const tbody = document.getElementById("discounts-table-body");
+    if (!tbody) return;
+
+    if (products.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-5">Belum ada produk di katalog.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = products.map(p => {
+      const discType = p.member_discount_type || "percent";
+      const discVal = p.member_discount_value !== undefined ? p.member_discount_value : 0;
+      
+      return `
+        <tr id="disc-row-${p.id}">
+          <td>
+            <div class="fw-bold">${p.name}</div>
+            <small class="text-muted">${p.category ? p.category.name : 'Pakaian'}</small>
+          </td>
+          <td><code>${p.sku || p.barcode || '-'}</code></td>
+          <td class="fw-bold text-dark">${formatRupiah(p.base_price)}</td>
+          <td>
+            <select class="form-select form-select-sm" id="disc-type-${p.id}" onchange="recalcDiscountPreview(${p.id}, ${p.base_price})">
+              <option value="percent" ${discType === 'percent' ? 'selected' : ''}>Persen (%)</option>
+              <option value="nominal" ${discType === 'nominal' ? 'selected' : ''}>Nominal (Rp)</option>
+            </select>
+          </td>
+          <td>
+            <div class="input-group input-group-sm">
+              <input type="number" class="form-control" id="disc-val-${p.id}" value="${discVal}" min="0" step="any" oninput="recalcDiscountPreview(${p.id}, ${p.base_price})">
+              <span class="input-group-text" id="disc-suffix-${p.id}">${discType === 'percent' ? '%' : 'Rp'}</span>
+            </div>
+          </td>
+          <td class="fw-bold text-success fs-6" id="disc-preview-${p.id}">
+            ${calcDiscountPrice(p.base_price, discType, discVal)}
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary" onclick="saveSingleDiscountRule(${p.id})">
+              <i class="bi bi-save"></i> Simpan
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    if (typeof TableManager !== "undefined") {
+      TableManager.bind(tbody.closest("table"));
+    }
+  }
+
+  function calcDiscountPrice(basePrice, type, val) {
+    val = parseFloat(val) || 0;
+    let finalPrice = basePrice;
+    if (type === "percent") {
+      finalPrice = basePrice - (basePrice * (val / 100));
+    } else {
+      finalPrice = basePrice - val;
+    }
+    return formatRupiah(Math.max(0, finalPrice));
+  }
+
+  function recalcDiscountPreview(id, basePrice) {
+    const type = document.getElementById(`disc-type-${id}`).value;
+    const val = document.getElementById(`disc-val-${id}`).value;
+    document.getElementById(`disc-suffix-${id}`).innerText = type === "percent" ? "%" : "Rp";
+    document.getElementById(`disc-preview-${id}`).innerText = calcDiscountPrice(basePrice, type, val);
+  }
+
+  function filterDiscountTable(query) {
+    const q = query.trim().toLowerCase();
+    const rows = document.querySelectorAll("#discounts-table-body tr");
+    rows.forEach(r => {
+      r.style.display = r.innerText.toLowerCase().includes(q) ? "" : "none";
+    });
+  }
+
+  async function saveSingleDiscountRule(productId) {
+    const p = allProducts.find(x => x.id === productId);
+    if (!p) return;
+
+    const discType = document.getElementById(`disc-type-${productId}`).value;
+    const discVal = parseFloat(document.getElementById(`disc-val-${productId}`).value) || 0;
+    
+    // Retain existing commission settings
+    const commType = p.affiliate_commission_type || "percent";
+    const commVal = p.affiliate_commission_value || 0;
+
+    try {
+      await api.put(`/api/catalog/products/${productId}/affiliate-rules`, {
+        product_id: productId,
+        member_discount_type: discType,
+        member_discount_value: discVal,
+        affiliate_commission_type: commType,
+        affiliate_commission_value: commVal
+      });
+      p.member_discount_type = discType;
+      p.member_discount_value = discVal;
+      showToast(`Diskon member untuk "${p.name}" berhasil disimpan!`, "success");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function saveAllDiscountRules() {
+    const rules = [];
+    allProducts.forEach(p => {
+      const typeEl = document.getElementById(`disc-type-${p.id}`);
+      const valEl = document.getElementById(`disc-val-${p.id}`);
+      if (typeEl && valEl) {
+        rules.push({
+          product_id: p.id,
+          member_discount_type: typeEl.value,
+          member_discount_value: parseFloat(valEl.value) || 0,
+          affiliate_commission_type: p.affiliate_commission_type || "percent",
+          affiliate_commission_value: p.affiliate_commission_value || 0
+        });
+      }
+    });
+
+    try {
+      const res = await api.put("/api/catalog/products/batch-affiliate-rules", { rules });
+      showToast(res.message || "Semua aturan diskon member berhasil disimpan!", "success");
+      await loadProductsCatalog();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  // 3. Affiliate Commissions Rules
+  function renderCommissionsTable(products) {
+    const tbody = document.getElementById("commissions-table-body");
+    if (!tbody) return;
+
+    if (products.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-5">Belum ada produk di katalog.</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = products.map(p => {
+      const commType = p.affiliate_commission_type || "percent";
+      const commVal = p.affiliate_commission_value !== undefined ? p.affiliate_commission_value : 0;
+      
+      return `
+        <tr id="comm-row-${p.id}">
+          <td>
+            <div class="fw-bold">${p.name}</div>
+            <small class="text-muted">${p.category ? p.category.name : 'Pakaian'}</small>
+          </td>
+          <td><code>${p.sku || p.barcode || '-'}</code></td>
+          <td class="fw-bold text-dark">${formatRupiah(p.base_price)}</td>
+          <td>
+            <select class="form-select form-select-sm" id="comm-type-${p.id}" onchange="recalcCommissionPreview(${p.id}, ${p.base_price})">
+              <option value="percent" ${commType === 'percent' ? 'selected' : ''}>Persen (%)</option>
+              <option value="nominal" ${commType === 'nominal' ? 'selected' : ''}>Nominal (Rp)</option>
+            </select>
+          </td>
+          <td>
+            <div class="input-group input-group-sm">
+              <input type="number" class="form-control" id="comm-val-${p.id}" value="${commVal}" min="0" step="any" oninput="recalcCommissionPreview(${p.id}, ${p.base_price})">
+              <span class="input-group-text" id="comm-suffix-${p.id}">${commType === 'percent' ? '%' : 'Rp'}</span>
+            </div>
+          </td>
+          <td class="fw-bold text-primary fs-6" id="comm-preview-${p.id}">
+            ${calcCommissionAmount(p.base_price, commType, commVal)}
+          </td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-outline-primary" onclick="saveSingleCommissionRule(${p.id})">
+              <i class="bi bi-save"></i> Simpan
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    if (typeof TableManager !== "undefined") {
+      TableManager.bind(tbody.closest("table"));
+    }
+  }
+
+  function calcCommissionAmount(basePrice, type, val) {
+    val = parseFloat(val) || 0;
+    let comm = 0;
+    if (type === "percent") {
+      comm = basePrice * (val / 100);
+    } else {
+      comm = val;
+    }
+    return formatRupiah(comm);
+  }
+
+  function recalcCommissionPreview(id, basePrice) {
+    const type = document.getElementById(`comm-type-${id}`).value;
+    const val = document.getElementById(`comm-val-${id}`).value;
+    document.getElementById(`comm-suffix-${id}`).innerText = type === "percent" ? "%" : "Rp";
+    document.getElementById(`comm-preview-${id}`).innerText = calcCommissionAmount(basePrice, type, val);
+  }
+
+  function filterCommissionTable(query) {
+    const q = query.trim().toLowerCase();
+    const rows = document.querySelectorAll("#commissions-table-body tr");
+    rows.forEach(r => {
+      r.style.display = r.innerText.toLowerCase().includes(q) ? "" : "none";
+    });
+  }
+
+  async function saveSingleCommissionRule(productId) {
+    const p = allProducts.find(x => x.id === productId);
+    if (!p) return;
+
+    const commType = document.getElementById(`comm-type-${productId}`).value;
+    const commVal = parseFloat(document.getElementById(`comm-val-${productId}`).value) || 0;
+    
+    // Retain existing discount settings
+    const discType = p.member_discount_type || "percent";
+    const discVal = p.member_discount_value || 0;
+
+    try {
+      await api.put(`/api/catalog/products/${productId}/affiliate-rules`, {
+        product_id: productId,
+        member_discount_type: discType,
+        member_discount_value: discVal,
+        affiliate_commission_type: commType,
+        affiliate_commission_value: commVal
+      });
+      p.affiliate_commission_type = commType;
+      p.affiliate_commission_value = commVal;
+      showToast(`Komisi affiliate untuk "${p.name}" berhasil disimpan!`, "success");
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function saveAllCommissionRules() {
+    const rules = [];
+    allProducts.forEach(p => {
+      const typeEl = document.getElementById(`comm-type-${p.id}`);
+      const valEl = document.getElementById(`comm-val-${p.id}`);
+      if (typeEl && valEl) {
+        rules.push({
+          product_id: p.id,
+          member_discount_type: p.member_discount_type || "percent",
+          member_discount_value: p.member_discount_value || 0,
+          affiliate_commission_type: typeEl.value,
+          affiliate_commission_value: parseFloat(valEl.value) || 0
+        });
+      }
+    });
+
+    try {
+      const res = await api.put("/api/catalog/products/batch-affiliate-rules", { rules });
+      showToast(res.message || "Semua aturan komisi affiliate berhasil disimpan!", "success");
+      await loadProductsCatalog();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  // 4. Commission Logs
+  async function loadCommissionLogs() {
+    try {
+      const logs = await api.get("/api/customers/commissions");
+      const tbody = document.getElementById("commission-logs-table-body");
+      if (!tbody) return;
+
+      if (logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Belum ada riwayat transaksi komisi affiliate.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = logs.map(l => `
+        <tr>
+          <td><small class="text-muted">${formatDate(l.created_at)}</small></td>
+          <td class="fw-bold">${l.customer_name || 'Member'}</td>
+          <td><span class="badge bg-light text-dark border">#${l.customer_id}</span></td>
+          <td class="fw-bold text-success">+${formatRupiah(l.amount)}</td>
+          <td><small class="text-secondary">${l.notes || '-'}</small></td>
+        </tr>
+      `).join("");
+
+      if (typeof TableManager !== "undefined") {
+        TableManager.bind(tbody.closest("table"));
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+</script>
+{% endblock %}

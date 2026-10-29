@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Backoffice{% endblock %} - {{ store_name|default('POS') }}</title>
+  
+  <!-- Bootstrap 5 CDN & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="stylesheet" href="/static/css/receipt.css">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+  <div class="d-flex" style="min-height: 100vh;">
+    <!-- Sidebar -->
+    <aside class="sidebar d-flex flex-column">
+      <div class="brand">
+        <h5 class="text-white fw-bold mb-0 d-flex align-items-center gap-2">
+          <i class="bi bi-shop text-primary"></i> <span class="app-store-name">{{ store_name|default('POS') }}</span>
+        </h5>
+        <small class="text-secondary" style="font-size: 0.75rem;">Backoffice</small>
+      </div>
+
+      <nav class="nav flex-column mt-3 flex-grow-1">
+        <a class="nav-link {% if active_page == 'dashboard' %}active{% endif %}" href="/backoffice/dashboard">
+          <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <a class="nav-link {% if active_page == 'products' %}active{% endif %}" href="/backoffice/products">
+          <i class="bi bi-box-seam"></i> Produk
+        </a>
+        <a class="nav-link {% if active_page == 'inventory' %}active{% endif %}" href="/backoffice/inventory">
+          <i class="bi bi-boxes"></i> Inventori & Stok
+        </a>
+        <a class="nav-link {% if active_page == 'sales' %}active{% endif %}" href="/backoffice/sales">
+          <i class="bi bi-receipt"></i> Penjualan (Sales)
+        </a>
+        <a class="nav-link {% if active_page == 'returns' %}active{% endif %}" href="/backoffice/returns">
+          <i class="bi bi-arrow-left-right"></i> Retur & Tukar Size
+        </a>
+        <a class="nav-link {% if active_page == 'shifts' %}active{% endif %}" href="/backoffice/shifts">
+          <i class="bi bi-cash-stack"></i> Shift Kasir
+        </a>
+        <a class="nav-link {% if active_page == 'members' or active_page == 'customers' %}active{% endif %}" href="/backoffice/members">
+          <i class="bi bi-people-fill"></i> Member & Affiliate
+        </a>
+        <a class="nav-link {% if active_page == 'reports' %}active{% endif %}" href="/backoffice/reports">
+          <i class="bi bi-bar-chart-line"></i> Laporan & Omset
+        </a>
+        <a class="nav-link {% if active_page == 'settings' %}active{% endif %}" href="/backoffice/settings">
+          <i class="bi bi-gear"></i> Pengaturan Toko
+        </a>
+      </nav>
+
+      <!-- Sidebar Footer -->
+      <div class="p-3 border-top border-secondary border-opacity-25">
+        <a href="/pos" class="btn btn-outline-light w-100 btn-sm mb-2 d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-calculator"></i> Buka Kasir (POS)
+        </a>
+        <button onclick="handleLogout()" class="btn btn-danger w-100 btn-sm d-flex align-items-center justify-content-center gap-2">
+          <i class="bi bi-box-arrow-right"></i> Keluar
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-grow-1 d-flex flex-column" style="overflow-y: auto;">
+      <!-- Top Navbar -->
+      <header class="bg-white border-bottom py-2 px-4 d-flex justify-content-between align-items-center">
+        <div></div>
+        <div class="d-flex align-items-center gap-3">
+          <a href="/pos" class="btn btn-primary btn-sm fw-semibold">
+            <i class="bi bi-calculator me-1"></i> Kasir
+          </a>
+          <div class="dropdown">
+            <button class="btn btn-light btn-sm dropdown-toggle d-flex align-items-center gap-2" data-bs-toggle="dropdown">
+              <i class="bi bi-person-circle fs-5 text-secondary"></i>
+              <span class="fw-semibold">{% if user %}{{ user.sub }}{% else %}Pengguna{% endif %}</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+              <li><a class="dropdown-item" href="/backoffice/settings"><i class="bi bi-gear me-2"></i>Pengaturan</a></li>
+              <li><hr class="dropdown-divider"></li>
+              <li><a class="dropdown-item text-danger" href="javascript:void(0)" onclick="handleLogout()"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+            </ul>
+          </div>
+        </div>
+      </header>
+
+      <!-- Body Content -->
+      <main class="p-4 flex-grow-1">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  <!-- Bootstrap 5 Bundle JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/static/js/sound.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/table-manager.js"></script>
+  <script src="/static/js/backoffice.js"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,187 @@
+/* Momaz POS Modern Theme */
+:root {
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --secondary-color: #475569;
+  --success-color: #10b981;
+  --danger-color: #ef4444;
+  --warning-color: #f59e0b;
+  --dark-sidebar: #0f172a;
+  --dark-sidebar-hover: #1e293b;
+  --bg-light: #f8fafc;
+  --card-border: #e2e8f0;
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-light);
+  color: #1e293b;
+  min-height: 100vh;
+}
+
+/* Sidebar Backoffice */
+.sidebar {
+  min-height: 100vh;
+  background-color: var(--dark-sidebar);
+  color: #94a3b8;
+  width: 250px;
+  flex-shrink: 0;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.sidebar .brand {
+  padding: 1.5rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar .nav-link {
+  color: #94a3b8;
+  padding: 0.75rem 1.25rem;
+  font-weight: 500;
+  border-radius: 8px;
+  margin: 0.2rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.2s ease;
+}
+
+.sidebar .nav-link:hover {
+  background-color: var(--dark-sidebar-hover);
+  color: #f8fafc;
+}
+
+.sidebar .nav-link.active {
+  background-color: var(--primary-color);
+  color: #ffffff;
+}
+
+/* Cards & Widgets */
+.stat-card {
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.table th {
+  font-weight: 600;
+  color: #475569;
+  background-color: #f8fafc;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+/* Badges */
+.badge-clothing-size {
+  background-color: #e0e7ff;
+  color: #3730a3;
+  font-weight: 600;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+}
+
+.badge-clothing-color {
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  font-weight: 500;
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+}
+
+/* Modal styling */
+.modal-content {
+  border-radius: 14px;
+  border: none;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.modal-header {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.modal-footer {
+  border-top: 1px solid #f1f5f9;
+}
+
+/* Universal TableManager (Sort, Search, Page Size, Pagination) */
+.dt-toolbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dt-footer {
+  background-color: #ffffff;
+  border-top: 1px solid #e2e8f0;
+}
+
+.dt-sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease;
+}
+
+.dt-sortable:hover {
+  background-color: #f1f5f9 !important;
+}
+
+.dt-sort-icon {
+  font-size: 0.75rem;
+  transition: color 0.15s ease;
+}
+
+.dt-search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15);
+}
+
+.pagination .page-link {
+  color: var(--secondary-color);
+  border-color: #e2e8f0;
+  padding: 0.35rem 0.65rem;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+  color: #ffffff;
+}
+
+.pagination .page-link:hover {
+  background-color: #f1f5f9;
+  color: var(--primary-color);
+}
+
+/* Modal Lock & Static Backdrop Feedback */
+.modal.modal-static .modal-dialog {
+  transform: scale(1.02) !important;
+  transition: transform 0.15s ease-in-out !important;
+}
+
+.modal .btn-close {
+  opacity: 0.8;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.modal .btn-close:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}

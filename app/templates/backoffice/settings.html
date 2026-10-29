@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Pengaturan Toko{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0" style="max-width: 900px;">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Pengaturan Toko & POS</h3>
+      <p class="text-muted small mb-0">Atur profil toko pakaian, format catatan struk thermal, tarif pajak PPN, dan kebijakan retur baju.</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <form onsubmit="handleSaveSettings(event)">
+        <!-- Profil Toko -->
+        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-shop me-2"></i> Profil Bisnis Retail</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Nama Toko Pakaian</label>
+            <input type="text" id="set-store-name" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Tagline / Slogan</label>
+            <input type="text" id="set-tagline" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Nomor Telepon / WhatsApp</label>
+            <input type="text" id="set-phone" class="form-control">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label small">Email Toko</label>
+            <input type="email" id="set-email" class="form-control">
+          </div>
+          <div class="col-12">
+            <label class="form-label small">Alamat Lengkap Outlet Toko</label>
+            <textarea id="set-address" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Kebijakan Retur & Struk -->
+        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-receipt me-2"></i> Kebijakan Retur & Struk Thermal</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Batas Waktu Penukaran Ukuran (Hari)</label>
+            <div class="input-group">
+              <input type="number" id="set-return-days" class="form-control" min="1" max="30">
+              <span class="input-group-text">Hari</span>
+            </div>
+            <small class="text-muted">Standar ritel fashion: 3 s.d 7 hari kerja setelah pembelian.</small>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-bold">Catatan Footer Struk Thermal</label>
+            <textarea id="set-footer" class="form-control" rows="3"></textarea>
+            <small class="text-muted">Akan tercetak di bagian paling bawah struk thermal (58mm/80mm).</small>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Pajak (PPN) -->
+        <h6 class="fw-bold text-primary mb-3"><i class="bi bi-percent me-2"></i> Pengaturan Pajak (PPN)</h6>
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="form-check form-switch mt-2">
+              <input class="form-check-input" type="checkbox" id="set-tax-enabled">
+              <label class="form-check-label fw-bold" for="set-tax-enabled">Aktifkan Perhitungan PPN Kasir</label>
+            </div>
+            <small class="text-muted">Jika diaktifkan, kasir akan otomatis menambahkan persentase pajak pada total tagihan.</small>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label small">Tarif Pajak (%)</label>
+            <div class="input-group">
+              <input type="number" id="set-tax-rate" class="form-control" step="0.1" min="0">
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-end">
+          <button type="submit" class="btn btn-primary fw-bold px-4 py-2">
+            <i class="bi bi-check2-circle me-1"></i> Simpan Pengaturan
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    loadSettingsForm();
+  });
+
+  async function handleSaveSettings(e) {
+    e.preventDefault();
+    await submitSettings();
+  }
+</script>
+{% endblock %}

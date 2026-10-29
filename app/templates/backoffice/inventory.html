@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+
+{% block title %}Inventori & Mutasi Stok{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">Manajemen Inventori & Stok Pakaian</h3>
+      <p class="text-muted small mb-0">Pantau peringatan stok menipis, riwayat mutasi stok, penerimaan barang, dan penyesuaian opname.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-primary" onclick="openStockOpnameModal()">
+        <i class="bi bi-pencil-square me-1"></i> Penyesuaian (Opname)
+      </button>
+      <button class="btn btn-success" onclick="openStockInModal()">
+        <i class="bi bi-box-arrow-in-down me-1"></i> Penerimaan Barang (Stock In)
+      </button>
+    </div>
+  </div>
+
+  <!-- Low Stock Alert Section -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-danger-subtle text-danger py-3 border-0 d-flex justify-content-between align-items-center">
+      <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i> Peringatan Stok Menipis / Kritis</h6>
+      <span class="small">Perlu restock segera</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="low-stock-table">
+          <thead>
+            <tr>
+              <th>Nama Produk</th>
+              <th>Kategori</th>
+              <th>SKU</th>
+              <th>Barcode</th>
+              <th>Sisa Stok</th>
+              <th>Ambang Batas Minimum</th>
+            </tr>
+          </thead>
+          <tbody id="low-stock-table-body">
+            <!-- Populated by backoffice.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock Movements Ledger -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+      <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i> Riwayat Mutasi Stok Terkini</h6>
+      <button class="btn btn-sm btn-outline-secondary" onclick="loadInventoryData()">
+        <i class="bi bi-arrow-clockwise"></i> Refresh
+      </button>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0" id="movements-table">
+          <thead>
+            <tr>
+              <th>Waktu</th>
+              <th>Item Pakaian</th>
+              <th>Jenis Mutasi</th>
+              <th>Perubahan</th>
+              <th>Stok Akhir</th>
+              <th>Referensi</th>
+              <th>Catatan</th>
+            </tr>
+          </thead>
+          <tbody id="movements-table-body">
+            <!-- Populated by backoffice.js -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- 1. Stock In Modal -->
+<div class="modal fade" id="stockInModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-box-arrow-in-down me-2"></i> Penerimaan Barang (Restock)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="handleStockInSubmit(event)">
+        <div class="modal-body p-4">
+          <!-- Search Product via AJAX / Barcode -->
+          <div class="mb-3 position-relative">
+            <label class="form-label fw-bold">Cari Produk / Scan Barcode / Ketik SKU</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+              <input type="text" id="stockin-code" class="form-control" placeholder="Ketik nama produk, SKU, atau barcode..." autocomplete="off" required oninput="handleStockInSearchInput(this.value)">
+              <button class="btn btn-outline-secondary" type="button" onclick="clearStockInSelection()" id="stockin-clear-btn" style="display: none;">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <!-- AJAX Suggestions Dropdown -->
+            <div id="stockin-search-results" class="list-group shadow position-absolute w-100 mt-1" style="z-index: 1060; max-height: 240px; overflow-y: auto; display: none;"></div>
+          </div>
+
+          <!-- Selected Product Info Card -->
+          <div id="stockin-product-card" style="display: none;" class="card border border-success bg-success-subtle mb-3">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="fw-bold mb-1 text-dark" id="stockin-p-name">-</h6>
+                  <div class="small text-muted">
+                    <span class="me-2">SKU: <code id="stockin-p-sku">-</code></span>
+                    <span>Barcode: <code id="stockin-p-barcode">-</code></span>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="small text-muted fw-semibold">Stok Saat Ini</div>
+                  <span class="badge bg-success fs-6 px-3 py-2" id="stockin-p-current-stock">0 pcs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Jumlah Masuk (pcs)</label>
+            <input type="number" id="stockin-qty" class="form-control form-control-lg fw-bold text-center" min="1" value="10" required oninput="updateStockInPreview()">
+            <div id="stockin-preview-alert" class="mt-2 small text-muted text-center" style="display: none;"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Nama Suplier / Vendor</label>
+            <input type="text" id="stockin-supplier" class="form-control" placeholder="PT Maju Busana / Vendor">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Catatan Tambahan</label>
+            <input type="text" id="stockin-note" class="form-control" placeholder="Nomor Surat Jalan / Faktur">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success fw-bold px-4">Tambah Stok</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Stock Opname / Adjustment Modal -->
+<div class="modal fade" id="stockOpnameModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-warning">
+        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i> Penyesuaian Stok (Opname Fisik)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form onsubmit="handleOpnameSubmit(event)">
+        <div class="modal-body p-4">
+          <!-- Search Product via AJAX / Barcode -->
+          <div class="mb-3 position-relative">
+            <label class="form-label fw-bold">Cari Produk / Scan Barcode / Ketik SKU</label>
+            <div class="input-group">
+              <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+              <input type="text" id="opname-code" class="form-control" placeholder="Ketik nama produk, SKU, atau scan barcode..." autocomplete="off" required oninput="handleOpnameSearchInput(this.value)">
+              <button class="btn btn-outline-secondary" type="button" onclick="clearOpnameSelection()" id="opname-clear-btn" style="display: none;">
+                <i class="bi bi-x-lg"></i>
+              </button>
+            </div>
+            <!-- AJAX Suggestions Dropdown -->
+            <div id="opname-search-results" class="list-group shadow position-absolute w-100 mt-1" style="z-index: 1060; max-height: 240px; overflow-y: auto; display: none;"></div>
+          </div>
+
+          <!-- Selected Product Info Card -->
+          <div id="opname-product-card" style="display: none;" class="card border border-warning bg-warning-subtle mb-3">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div>
+                  <h6 class="fw-bold mb-1 text-dark" id="opname-p-name">-</h6>
+                  <div class="small text-muted">
+                    <span class="me-2">SKU: <code id="opname-p-sku">-</code></span>
+                    <span>Barcode: <code id="opname-p-barcode">-</code></span>
+                  </div>
+                </div>
+                <div class="text-end">
+                  <div class="small text-muted fw-semibold">Stok Saat Ini</div>
+                  <span class="badge bg-primary fs-6 px-3 py-2" id="opname-p-current-stock">0 pcs</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Jumlah Stok Fisik Sebenarnya (pcs)</label>
+            <input type="number" id="opname-actual" class="form-control form-control-lg fw-bold text-center" min="0" placeholder="0" required oninput="updateOpnameDiff()">
+            <div id="opname-diff-alert" class="mt-2 small" style="display: none;"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Alasan Penyesuaian</label>
+            <select id="opname-reason" class="form-select">
+              <option value="physical_count">Hasil Stock Opname Fisik</option>
+              <option value="damaged">Barang Rusak / Cacat</option>
+              <option value="lost">Barang Hilang / Selisih Display</option>
+              <option value="other">Lainnya</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">Keterangan Tambahan</label>
+            <input type="text" id="opname-note" class="form-control" placeholder="Keterangan opname...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-warning fw-bold px-4">Simpan Koreksi</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  let opnameSearchDebounce = null;
+  let selectedOpnameProduct = null;
+
+  let stockinSearchDebounce = null;
+  let selectedStockInProduct = null;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadInventoryData();
+
+    // Close AJAX dropdowns when clicking outside
+    document.addEventListener("click", (e) => {
+      if (!e.target.closest("#opname-code") && !e.target.closest("#opname-search-results")) {
+        const dd = document.getElementById("opname-search-results");
+        if (dd) dd.style.display = "none";
+      }
+      if (!e.target.closest("#stockin-code") && !e.target.closest("#stockin-search-results")) {
+        const dd = document.getElementById("stockin-search-results");
+        if (dd) dd.style.display = "none";
+      }
+    });
+  });
+
+  function openStockInModal() {
+    clearStockInSelection();
+    document.getElementById("stockin-qty").value = 10;
+    document.getElementById("stockin-supplier").value = "";
+    document.getElementById("stockin-note").value = "";
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("stockInModal")).show();
+    setTimeout(() => document.getElementById("stockin-code").focus(), 300);
+  }
+
+  function openStockOpnameModal() {
+    clearOpnameSelection();
+    document.getElementById("opname-reason").value = "physical_count";
+    document.getElementById("opname-note").value = "";
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("stockOpnameModal")).show();
+    setTimeout(() => document.getElementById("opname-code").focus(), 300);
+  }
+
+  // ==================== AJAX PRODUCT SEARCH: OPNAME ====================
+  function handleOpnameSearchInput(query) {
+    clearTimeout(opnameSearchDebounce);
+    const dropdown = document.getElementById("opname-search-results");
+    const trimmed = query.trim();
+
+    if (trimmed.length < 1) {
+      dropdown.style.display = "none";
+      dropdown.innerHTML = "";
+      return;
+    }
+
+    opnameSearchDebounce = setTimeout(async () => {
+      try {
+        const products = await api.get(`/api/catalog/products?q=${encodeURIComponent(trimmed)}`);
+        if (!products || products.length === 0) {
+          dropdown.innerHTML = `<div class="list-group-item text-muted small py-2 text-center"><i class="bi bi-search me-1"></i> Produk tidak ditemukan</div>`;
+          dropdown.style.display = "block";
+          return;
+        }
+
+        dropdown.innerHTML = products.slice(0, 8).map(p => {
+          const stock = p.stock !== null && p.stock !== undefined ? p.stock : (p.total_stock || 0);
+          const safeProduct = JSON.stringify(p).replace(/"/g, '&quot;');
+          return `
+            <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2" onclick="selectOpnameProduct(${safeProduct})">
+              <div>
+                <div class="fw-bold small text-dark">${p.name}</div>
+                <div class="text-muted" style="font-size: 0.75rem;">
+                  SKU: <code>${p.sku || '-'}</code> | Barcode: <code>${p.barcode || '-'}</code>
+                </div>
+              </div>
+              <div class="text-end ms-2">
+                <span class="badge ${stock <= (p.min_stock || 3) ? 'bg-danger' : 'bg-primary'} px-2 py-1">${stock} pcs</span>
+              </div>
+            </button>
+          `;
+        }).join("");
+        dropdown.style.display = "block";
+      } catch (err) {
+        console.error("Search error:", err);
+      }
+    }, 200);
+  }
+
+  function selectOpnameProduct(p) {
+    selectedOpnameProduct = p;
+    document.getElementById("opname-code").value = p.name;
+    document.getElementById("opname-search-results").style.display = "none";
+    document.getElementById("opname-clear-btn").style.display = "inline-block";
+
+    // Show Product Info Card
+    document.getElementById("opname-p-name").innerText = p.name;
+    document.getElementById("opname-p-sku").innerText = p.sku || "-";
+    document.getElementById("opname-p-barcode").innerText = p.barcode || "-";
+    const stock = p.stock !== null && p.stock !== undefined ? p.stock : (p.total_stock || 0);
+    document.getElementById("opname-p-current-stock").innerText = `${stock} pcs`;
+    document.getElementById("opname-product-card").style.display = "block";
+
+    // Pre-fill actual input with current stock
+    const actualInput = document.getElementById("opname-actual");
+    actualInput.value = stock;
+    updateOpnameDiff();
+    actualInput.focus();
+    actualInput.select();
+  }
+
+  function clearOpnameSelection() {
+    selectedOpnameProduct = null;
+    document.getElementById("opname-code").value = "";
+    document.getElementById("opname-clear-btn").style.display = "none";
+    document.getElementById("opname-product-card").style.display = "none";
+    document.getElementById("opname-diff-alert").style.display = "none";
+    document.getElementById("opname-actual").value = "";
+    const dd = document.getElementById("opname-search-results");
+    if (dd) dd.style.display = "none";
+  }
+
+  function updateOpnameDiff() {
+    if (!selectedOpnameProduct) return;
+    const currentStock = selectedOpnameProduct.stock !== null && selectedOpnameProduct.stock !== undefined ? selectedOpnameProduct.stock : (selectedOpnameProduct.total_stock || 0);
+    const actualVal = document.getElementById("opname-actual").value;
+    const alertBox = document.getElementById("opname-diff-alert");
+
+    if (actualVal === "") {
+      alertBox.style.display = "none";
+      return;
+    }
+
+    const actual = parseInt(actualVal) || 0;
+    const diff = actual - currentStock;
+
+    alertBox.style.display = "block";
+    if (diff < 0) {
+      alertBox.className = "mt-2 p-2 rounded bg-danger-subtle text-danger fw-semibold small text-center";
+      alertBox.innerHTML = `<i class="bi bi-arrow-down-circle-fill me-1"></i> Selisih: <strong>${diff} pcs</strong> (Stok sistem akan berkurang ${Math.abs(diff)} pcs)`;
+    } else if (diff > 0) {
+      alertBox.className = "mt-2 p-2 rounded bg-success-subtle text-success fw-semibold small text-center";
+      alertBox.innerHTML = `<i class="bi bi-arrow-up-circle-fill me-1"></i> Selisih: <strong>+${diff} pcs</strong> (Stok sistem akan bertambah ${diff} pcs)`;
+    } else {
+      alertBox.className = "mt-2 p-2 rounded bg-info-subtle text-info fw-semibold small text-center";
+      alertBox.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> Stok Fisik Sesuai dengan Sistem (0 pcs)`;
+    }
+  }
+
+  // ==================== AJAX PRODUCT SEARCH: STOCK IN ====================
+  function handleStockInSearchInput(query) {
+    clearTimeout(stockinSearchDebounce);
+    const dropdown = document.getElementById("stockin-search-results");
+    const trimmed = query.trim();
+
+    if (trimmed.length < 1) {
+      dropdown.style.display = "none";
+      dropdown.innerHTML = "";
+      return;
+    }
+
+    stockinSearchDebounce = setTimeout(async () => {
+      try {
+        const products = await api.get(`/api/catalog/products?q=${encodeURIComponent(trimmed)}`);
+        if (!products || products.length === 0) {
+          dropdown.innerHTML = `<div class="list-group-item text-muted small py-2 text-center"><i class="bi bi-search me-1"></i> Produk tidak ditemukan</div>`;
+          dropdown.style.display = "block";
+          return;
+        }
+
+        dropdown.innerHTML = products.slice(0, 8).map(p => {
+          const stock = p.stock !== null && p.stock !== undefined ? p.stock : (p.total_stock || 0);
+          const safeProduct = JSON.stringify(p).replace(/"/g, '&quot;');
+          return `
+            <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2" onclick="selectStockInProduct(${safeProduct})">
+              <div>
+                <div class="fw-bold small text-dark">${p.name}</div>
+                <div class="text-muted" style="font-size: 0.75rem;">
+                  SKU: <code>${p.sku || '-'}</code> | Barcode: <code>${p.barcode || '-'}</code>
+                </div>
+              </div>
+              <div class="text-end ms-2">
+                <span class="badge bg-primary px-2 py-1">${stock} pcs</span>
+              </div>
+            </button>
+          `;
+        }).join("");
+        dropdown.style.display = "block";
+      } catch (err) {
+        console.error("Search error:", err);
+      }
+    }, 200);
+  }
+
+  function selectStockInProduct(p) {
+    selectedStockInProduct = p;
+    document.getElementById("stockin-code").value = p.name;
+    document.getElementById("stockin-search-results").style.display = "none";
+    document.getElementById("stockin-clear-btn").style.display = "inline-block";
+
+    document.getElementById("stockin-p-name").innerText = p.name;
+    document.getElementById("stockin-p-sku").innerText = p.sku || "-";
+    document.getElementById("stockin-p-barcode").innerText = p.barcode || "-";
+    const stock = p.stock !== null && p.stock !== undefined ? p.stock : (p.total_stock || 0);
+    document.getElementById("stockin-p-current-stock").innerText = `${stock} pcs`;
+    document.getElementById("stockin-product-card").style.display = "block";
+
+    updateStockInPreview();
+    document.getElementById("stockin-qty").focus();
+  }
+
+  function clearStockInSelection() {
+    selectedStockInProduct = null;
+    document.getElementById("stockin-code").value = "";
+    document.getElementById("stockin-clear-btn").style.display = "none";
+    document.getElementById("stockin-product-card").style.display = "none";
+    document.getElementById("stockin-preview-alert").style.display = "none";
+    const dd = document.getElementById("stockin-search-results");
+    if (dd) dd.style.display = "none";
+  }
+
+  function updateStockInPreview() {
+    if (!selectedStockInProduct) return;
+    const currentStock = selectedStockInProduct.stock !== null && selectedStockInProduct.stock !== undefined ? selectedStockInProduct.stock : (selectedStockInProduct.total_stock || 0);
+    const qty = parseInt(document.getElementById("stockin-qty").value) || 0;
+    const previewBox = document.getElementById("stockin-preview-alert");
+
+    previewBox.style.display = "block";
+    previewBox.innerHTML = `Stok saat ini: <strong>${currentStock} pcs</strong> + Masuk: <strong>${qty} pcs</strong> = Total Stok: <strong>${currentStock + qty} pcs</strong>`;
+  }
+
+  // ==================== SUBMIT HANDLERS ====================
+  async function handleStockInSubmit(e) {
+    e.preventDefault();
+    const qty = parseInt(document.getElementById("stockin-qty").value) || 0;
+    const supplier = document.getElementById("stockin-supplier").value;
+    const note = document.getElementById("stockin-note").value;
+
+    let targetProductId = selectedStockInProduct ? selectedStockInProduct.id : null;
+    let targetProductName = selectedStockInProduct ? selectedStockInProduct.name : "";
+
+    try {
+      if (!targetProductId) {
+        const code = document.getElementById("stockin-code").value.trim();
+        const item = await api.get(`/api/catalog/scan/${encodeURIComponent(code)}`);
+        targetProductId = item.product_id;
+        targetProductName = item.product_name;
+      }
+
+      await api.post("/api/inventory/stock-in", {
+        supplier_name: supplier,
+        note: note,
+        items: [{ product_id: targetProductId, quantity: qty }]
+      });
+
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("stockInModal")).hide();
+      showToast(`Berhasil menambah stok +${qty} pcs untuk ${targetProductName}!`, "success");
+      loadInventoryData();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+
+  async function handleOpnameSubmit(e) {
+    e.preventDefault();
+    const actual = parseInt(document.getElementById("opname-actual").value);
+    const reason = document.getElementById("opname-reason").value;
+    const note = document.getElementById("opname-note").value;
+
+    let targetProductId = selectedOpnameProduct ? selectedOpnameProduct.id : null;
+    let targetProductName = selectedOpnameProduct ? selectedOpnameProduct.name : "";
+
+    try {
+      if (!targetProductId) {
+        const code = document.getElementById("opname-code").value.trim();
+        const item = await api.get(`/api/catalog/scan/${encodeURIComponent(code)}`);
+        targetProductId = item.product_id;
+        targetProductName = item.product_name;
+      }
+
+      await api.post("/api/inventory/adjust", {
+        product_id: targetProductId,
+        actual_stock: actual,
+        reason: reason,
+        note: note
+      });
+
+      bootstrap.Modal.getOrCreateInstance(document.getElementById("stockOpnameModal")).hide();
+      showToast(`Stok untuk ${targetProductName} berhasil disesuaikan menjadi ${actual} pcs.`, "success");
+      loadInventoryData();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+  }
+</script>
+{% endblock %}
