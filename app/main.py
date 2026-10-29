@@ -86,13 +86,23 @@ def favicon():
 
 # ----------------- Web UI Page Routes -----------------
 
+def check_backoffice_access(request: Request):
+    user = get_user_from_cookie(request)
+    if not user:
+        return RedirectResponse(url="/login")
+    if not user.get("tenant_slug"):
+        return RedirectResponse(url="/setup")
+    if user.get("role") == "cashier":
+        return RedirectResponse(url="/pos")
+    return None
+
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     user = get_user_from_cookie(request)
-    if user:
-        if user.get("tenant_slug"):
+    if user and user.get("tenant_slug"):
+        if user.get("role") == "cashier":
             return RedirectResponse(url="/pos")
-        return RedirectResponse(url="/setup")
+        return RedirectResponse(url="/backoffice/dashboard")
     return templates.TemplateResponse(request=request, name="login.html", context={"title": "Login Kasir & Backoffice"})
 
 @app.get("/setup", response_class=HTMLResponse)
@@ -114,6 +124,8 @@ def root(request: Request):
         return RedirectResponse(url="/login")
     if not user.get("tenant_slug"):
         return RedirectResponse(url="/setup")
+    if user.get("role") == "cashier":
+        return RedirectResponse(url="/pos")
     return RedirectResponse(url="/pos")
 
 @app.get("/pos", response_class=HTMLResponse)
@@ -127,75 +139,61 @@ def pos_interface(request: Request):
 
 @app.get("/backoffice", response_class=HTMLResponse)
 def backoffice_root(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return RedirectResponse(url="/backoffice/dashboard")
 
 @app.get("/backoffice/dashboard", response_class=HTMLResponse)
 def backoffice_dashboard(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/dashboard.html", context=get_template_context(request, {
         "active_page": "dashboard"
     }))
 
 @app.get("/backoffice/products", response_class=HTMLResponse)
 def backoffice_products(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/products.html", context=get_template_context(request, {
         "active_page": "products"
     }))
 
 @app.get("/backoffice/inventory", response_class=HTMLResponse)
 def backoffice_inventory(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/inventory.html", context=get_template_context(request, {
         "active_page": "inventory"
     }))
 
 @app.get("/backoffice/sales", response_class=HTMLResponse)
 def backoffice_sales(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/sales.html", context=get_template_context(request, {
         "active_page": "sales"
     }))
 
 @app.get("/backoffice/shifts", response_class=HTMLResponse)
 def backoffice_shifts(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/shifts.html", context=get_template_context(request, {
         "active_page": "shifts"
     }))
 
 @app.get("/backoffice/returns", response_class=HTMLResponse)
 def backoffice_returns(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/returns.html", context=get_template_context(request, {
         "active_page": "returns"
     }))
@@ -203,33 +201,36 @@ def backoffice_returns(request: Request):
 @app.get("/backoffice/members", response_class=HTMLResponse)
 @app.get("/backoffice/customers", response_class=HTMLResponse)
 def backoffice_members(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/members.html", context=get_template_context(request, {
         "active_page": "members"
     }))
 
 @app.get("/backoffice/reports", response_class=HTMLResponse)
 def backoffice_reports(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/reports.html", context=get_template_context(request, {
         "active_page": "reports"
     }))
 
 @app.get("/backoffice/settings", response_class=HTMLResponse)
 def backoffice_settings(request: Request):
-    user = get_user_from_cookie(request)
-    if not user:
-        return RedirectResponse(url="/login")
-    if not user.get("tenant_slug"):
-        return RedirectResponse(url="/setup")
+    check = check_backoffice_access(request)
+    if check:
+        return check
     return templates.TemplateResponse(request=request, name="backoffice/settings.html", context=get_template_context(request, {
         "active_page": "settings"
+    }))
+
+@app.get("/backoffice/users", response_class=HTMLResponse)
+def backoffice_users(request: Request):
+    check = check_backoffice_access(request)
+    if check:
+        return check
+    return templates.TemplateResponse(request=request, name="backoffice/users.html", context=get_template_context(request, {
+        "active_page": "users"
     }))

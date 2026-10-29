@@ -53,6 +53,22 @@ def update_user(db: Session, user_id: int, user_in: UserUpdate) -> User:
     db.refresh(user)
     return user
 
+def delete_user(db: Session, user_id: int, current_user_id: Optional[int] = None) -> User:
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan.")
+    if current_user_id and user.id == current_user_id:
+        raise HTTPException(status_code=400, detail="Anda tidak dapat menghapus akun Anda sendiri.")
+    
+    if user.role == "admin":
+        admin_count = db.query(User).filter(User.role == "admin", User.is_active == True).count()
+        if admin_count <= 1:
+            raise HTTPException(status_code=400, detail="Tidak dapat menghapus admin terakhir. Minimal harus ada 1 akun administrator aktif.")
+            
+    db.delete(user)
+    db.commit()
+    return user
+
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
     user = get_user_by_username(db, username)
     if not user:
