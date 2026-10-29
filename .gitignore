@@ -45,8 +45,8 @@ venv.bak/
 *.db-journal
 *.db-wal
 *.db-shm
-master.db
-tenants/
+/master.db
+/tenants/
 
 # Local Uploads (Vercel Blob Storage is used in production)
 app/static/uploads/products/*
