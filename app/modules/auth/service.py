@@ -2,15 +2,18 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from typing import Optional, List
+import logging
 from app.database import get_db
-from app.core.security import hash_password, verify_password, decode_access_token
+from app.core.security import hash_password, verify_password, decode_access_token, TokenExpiredError, TokenInvalidError
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserCreate, UserUpdate
 
+logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
-    return db.query(User).filter(User.username == username).first()
+    # Case-insensitive lookup
+    return db.query(User).filter(User.username == username.lower()).first()
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
@@ -19,12 +22,14 @@ def get_all_users(db: Session) -> List[User]:
     return db.query(User).order_by(User.id.desc()).all()
 
 def create_user(db: Session, user_in: UserCreate) -> User:
-    existing = get_user_by_username(db, user_in.username)
+    # Normalize username to lowercase
+    username_normalized = user_in.username.lower()
+    existing = get_user_by_username(db, username_normalized)
     if existing:
         raise HTTPException(status_code=400, detail="Username sudah terdaftar.")
-    
+
     db_user = User(
-        username=user_in.username,
+        username=username_normalized,
         password_hash=hash_password(user_in.password),
         full_name=user_in.full_name,
         role=user_in.role,
@@ -96,8 +101,22 @@ def get_current_user(
             detail="Belum terotentikasi. Silakan login terlebih dahulu.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-        
-    payload = decode_access_token(auth_token)
+
+    try:
+        payload = decode_access_token(auth_token)
+    except TokenExpiredError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except TokenInvalidError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     if not payload:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

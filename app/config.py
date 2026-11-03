@@ -6,10 +6,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 class Settings:
     PROJECT_NAME: str = "Momaz POS - Retail Pakaian (Multi-Tenant)"
     VERSION: str = "2.0.0"
-    
+
     # Cloud Database (Neon.tech PostgreSQL / Vercel Postgres)
     # POOLED URL — untuk query reguler sehari-hari (lebih efisien di Vercel)
     # Neon pooler (PgBouncer) tidak support startup params seperti search_path
+    # URL rewrite: postgres:// → postgresql:// (psycopg3 compatibility)
     raw_db_url: str = (
         os.getenv("DATABASE_URL")
         or os.getenv("POSTGRES_URL")
@@ -50,7 +51,20 @@ class Settings:
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
+    # SQLite Performance (configurable via env)
+    SQLITE_SYNCHRONOUS: str = os.getenv("SQLITE_SYNCHRONOUS", "NORMAL")  # NORMAL, FULL, or OFF
+
 settings = Settings()
+
+# Validate SECRET_KEY in production
+if settings.SECRET_KEY == "super-secret-momaz-pos-multi-tenant-key-2026":
+    is_production = os.getenv("VERCEL") or os.getenv("PRODUCTION")
+    if is_production:
+        raise RuntimeError(
+            "SECURITY ERROR: Default SECRET_KEY detected in production. "
+            "Set SECRET_KEY environment variable immediately."
+        )
+
 if not settings.DATABASE_URL:
     try:
         settings.TENANTS_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,8 +1,27 @@
 import bcrypt
 import jwt
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Dict
 from app.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class TokenError(Exception):
+    """Base class for token-related errors."""
+    pass
+
+
+class TokenExpiredError(TokenError):
+    """Token has expired."""
+    pass
+
+
+class TokenInvalidError(TokenError):
+    """Token is malformed or invalid."""
+    pass
+
 
 def hash_password(password: str) -> str:
     pwd_bytes = password.encode('utf-8')
@@ -28,11 +47,23 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 def decode_access_token(token: str) -> Optional[dict]:
+    """
+    Decode JWT token with proper error distinction.
+    Returns payload dict on success, None on failure.
+    Raises specific TokenError subclasses for different failure modes.
+    """
     try:
         t = str(token).strip().strip('"').strip("'")
         while t.lower().startswith("bearer "):
             t = t[7:].strip().strip('"').strip("'")
         payload = jwt.decode(t, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         return payload
-    except Exception:
+    except jwt.ExpiredSignatureError:
+        logger.warning("Token expired")
+        raise TokenExpiredError("Token kedaluwarsa. Silakan login kembali.")
+    except jwt.InvalidTokenError as e:
+        logger.warning(f"Invalid token: {e}")
+        raise TokenInvalidError("Token tidak valid.")
+    except Exception as e:
+        logger.error(f"Token decode error: {e}")
         return None

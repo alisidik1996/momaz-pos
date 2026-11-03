@@ -38,10 +38,11 @@ def _get_master_unpooled_engine():
 if not is_postgres:
     @event.listens_for(master_engine, "connect")
     def set_master_sqlite_pragma(dbapi_connection, connection_record):
+        from app.config import settings
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON;")
         cursor.execute("PRAGMA journal_mode=WAL;")
-        cursor.execute("PRAGMA synchronous=NORMAL;")
+        cursor.execute(f"PRAGMA synchronous={settings.SQLITE_SYNCHRONOUS};")
         cursor.close()
 
 MasterSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=master_engine)
@@ -76,6 +77,10 @@ class TenantManager:
                 # Neon pooler (PgBouncer) tidak mendukung statement DDL
                 unpooled_engine = _get_master_unpooled_engine()
                 with unpooled_engine.connect() as conn:
+                    # Use parameterized query for schema creation (extra safety)
+                    # Note: PostgreSQL doesn't support parameters in DDL, so we validate schema_name first
+                    if not re.match(r'^[a-zA-Z0-9_]+$', schema_name):
+                        raise ValueError(f"Invalid schema name: {schema_name}")
                     conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";'))
                     conn.commit()
 
@@ -104,10 +109,11 @@ class TenantManager:
                 
                 @event.listens_for(engine, "connect")
                 def set_tenant_sqlite_pragma(dbapi_connection, connection_record):
+                    from app.config import settings
                     cursor = dbapi_connection.cursor()
                     cursor.execute("PRAGMA foreign_keys=ON;")
                     cursor.execute("PRAGMA journal_mode=WAL;")
-                    cursor.execute("PRAGMA synchronous=NORMAL;")
+                    cursor.execute(f"PRAGMA synchronous={settings.SQLITE_SYNCHRONOUS};")
                     cursor.close()
 
             cls._engines[tenant_slug] = engine
@@ -127,22 +133,23 @@ class TenantManager:
         if is_postgres:
             # Pada PostgreSQL: jalankan DDL (create_all) via UNPOOLED engine
             # agar kompatibel dengan Neon pooler yang tidak mendukung DDL
-            # Engine yang diteruskan sudah punya search_path yang benar via event listener,
-            # tapi kita butuh engine yang sama namun dengan unpooled connection untuk DDL.
-            # Solusi: ambil URL dari engine lalu buat unpooled engine sementara dengan
-            # search_path yang sama (set via execution_options setelah connect).
+            import logging
+            logger = logging.getLogger(__name__)
+
             try:
                 # Coba jalankan create_all langsung dulu (untuk unpooled engine)
                 Base.metadata.create_all(bind=engine)
-            except Exception:
+            except Exception as e:
                 # Jika gagal (misalnya pooler tidak support), buat unpooled engine sementara
+                logger.warning(f"DDL via pooled connection failed, trying unpooled: {e}")
                 try:
                     unpooled_url = settings.DATABASE_URL_UNPOOLED or settings.DATABASE_URL
                     tmp_engine = create_engine(unpooled_url, pool_pre_ping=True, echo=False)
                     Base.metadata.create_all(bind=tmp_engine)
                     tmp_engine.dispose()
-                except Exception as e:
-                    print(f"Warning: DDL create_all gagal: {e}")
+                except Exception as e2:
+                    logger.error(f"CRITICAL: DDL create_all failed on unpooled connection: {e2}")
+                    raise RuntimeError(f"Failed to initialize tenant database schema: {e2}")
             return
 
         from sqlalchemy import inspect, text
@@ -340,8 +347,12 @@ class TenantManager:
             tmp_engine = create_engine(unpooled_url, pool_pre_ping=True, echo=False)
             try:
                 with tmp_engine.connect() as conn:
+                    # Validate schema_name before DDL (already validated by re.sub at line 73, but extra safety)
+                    if not re.match(r'^[a-zA-Z0-9_]+$', schema_name):
+                        raise ValueError(f"Invalid schema name: {schema_name}")
                     conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";'))
-                    conn.execute(text(f'SET search_path TO "{schema_name}", public'))
+                    # Use parameterized query for SET search_path
+                    conn.execute(text("SET search_path TO :schema, public"), {"schema": schema_name})
                     conn.commit()
                 Base.metadata.create_all(bind=tmp_engine)
             finally:
@@ -410,19 +421,8 @@ def get_tenant_slug_from_request(request: Request) -> Optional[str]:
             except Exception:
                 pass
 
-    # 3. Graceful fallback: If only 1 tenant is registered in master.db, use it
-    try:
-        from app.modules.tenants.models import Tenant
-        db = MasterSessionLocal()
-        try:
-            active_tenants = db.query(Tenant).filter(Tenant.is_active == True).all()
-            if len(active_tenants) == 1:
-                return active_tenants[0].slug
-        finally:
-            db.close()
-    except Exception:
-        pass
-
+    # Removed dangerous auto-tenant fallback to prevent cross-tenant data leaks
+    # Tenant context MUST be explicit via token or header
     return None
 
 def get_db(request: Request) -> Generator[Session, None, None]:

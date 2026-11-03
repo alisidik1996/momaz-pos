@@ -16,7 +16,8 @@ def slugify(text: str) -> str:
     return re.sub(r'[\s_-]+', '-', text)
 
 def get_master_user_by_username(db: Session, username: str) -> Optional[MasterUser]:
-    return db.query(MasterUser).filter(MasterUser.username == username).first()
+    # Case-insensitive lookup
+    return db.query(MasterUser).filter(MasterUser.username == username.lower()).first()
 
 def get_master_user_by_id(db: Session, user_id: int) -> Optional[MasterUser]:
     return db.query(MasterUser).filter(MasterUser.id == user_id).first()
@@ -28,12 +29,14 @@ def get_tenant_by_slug(db: Session, slug: str) -> Optional[Tenant]:
     return db.query(Tenant).filter(Tenant.slug == slug).first()
 
 def register_admin(db: Session, req: AdminRegisterRequest) -> MasterUser:
-    existing = get_master_user_by_username(db, req.username.strip())
+    # Normalize username to lowercase
+    username_normalized = req.username.strip().lower()
+    existing = get_master_user_by_username(db, username_normalized)
     if existing:
         raise HTTPException(status_code=400, detail="Username ini sudah terdaftar. Silakan gunakan username lain atau login.")
 
     admin = MasterUser(
-        username=req.username.strip(),
+        username=username_normalized,
         password_hash=hash_password(req.password),
         full_name=req.full_name.strip(),
         role="admin",

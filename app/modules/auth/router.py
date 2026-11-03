@@ -19,8 +19,10 @@ router = APIRouter(prefix="/api/auth", tags=["Authentication & Users"])
 
 @router.post("/login", response_model=TokenResponse)
 def login(login_data: LoginRequest, response: Response, master_db: Session = Depends(get_master_db)):
-    user = master_db.query(MasterUser).filter(MasterUser.username == login_data.username.strip()).first()
-    if not user or not verify_password(login_data.password, user.password_hash) or not user.is_active:
+    # Case-insensitive username lookup for better UX
+    username_normalized = login_data.username.strip().lower()
+    user = master_db.query(MasterUser).filter(MasterUser.username == username_normalized).first()
+    if not user or not user.is_active or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Username atau kata sandi salah."
@@ -85,92 +87,88 @@ def list_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
 
 @router.post("/users", response_model=UserOut)
 def create_new_user(
-    user_in: UserCreate, 
+    user_in: UserCreate,
     request: Request,
-    db: Session = Depends(get_db), 
+    db: Session = Depends(get_db),
     master_db: Session = Depends(get_master_db),
     _: User = Depends(require_admin)
 ):
+    from app.core.sync import sync_user_to_master, DualDBSyncError
+    from app.database import get_tenant_slug_from_request
+    import logging
+
+    logger = logging.getLogger(__name__)
     new_user = create_user(db, user_in)
-    
+
     # Sync with master_db so the user can immediately log in from /login
+    slug = get_tenant_slug_from_request(request)
+    tenant_id = None
+    if slug:
+        t = master_db.query(Tenant).filter(Tenant.slug == slug).first()
+        if t:
+            tenant_id = t.id
+
     try:
-        from app.database import get_tenant_slug_from_request
-        slug = get_tenant_slug_from_request(request)
-        tenant_id = None
-        if slug:
-            t = master_db.query(Tenant).filter(Tenant.slug == slug).first()
-            if t:
-                tenant_id = t.id
-                
-        m_user = master_db.query(MasterUser).filter(MasterUser.username == user_in.username).first()
-        if not m_user:
-            m_user = MasterUser(
-                username=user_in.username,
-                password_hash=new_user.password_hash,
-                full_name=user_in.full_name,
-                role=user_in.role,
-                tenant_id=tenant_id,
-                is_active=user_in.is_active
-            )
-            master_db.add(m_user)
-        else:
-            m_user.password_hash = new_user.password_hash
-            m_user.full_name = user_in.full_name
-            m_user.role = user_in.role
-            m_user.is_active = user_in.is_active
-            if tenant_id:
-                m_user.tenant_id = tenant_id
-        master_db.commit()
-    except Exception as e:
-        print("Warning syncing user to master_db:", e)
-        
+        sync_user_to_master(
+            db, master_db, tenant_id,
+            user_in.username, new_user.password_hash,
+            user_in.full_name, user_in.role, user_in.is_active
+        )
+    except DualDBSyncError as e:
+        logger.error(f"Master DB sync failed for user '{user_in.username}': {e}")
+        # User created in tenant DB but login will fail until manual master DB fix
+        raise HTTPException(
+            status_code=500,
+            detail="User created in store database but master sync failed. Contact administrator."
+        )
+
     return new_user
 
 @router.put("/users/{user_id}", response_model=UserOut)
 def update_existing_user(
-    user_id: int, 
-    user_in: UserUpdate, 
-    db: Session = Depends(get_db), 
+    user_id: int,
+    user_in: UserUpdate,
+    db: Session = Depends(get_db),
     master_db: Session = Depends(get_master_db),
     _: User = Depends(require_admin)
 ):
+    from app.core.sync import sync_user_update_to_master, DualDBSyncError
+    import logging
+
+    logger = logging.getLogger(__name__)
     updated = update_user(db, user_id, user_in)
-    
+
     # Sync updates with master_db
     try:
-        m_user = master_db.query(MasterUser).filter(MasterUser.username == updated.username).first()
-        if m_user:
-            if user_in.full_name is not None:
-                m_user.full_name = user_in.full_name
-            if user_in.role is not None:
-                m_user.role = user_in.role
-            if user_in.is_active is not None:
-                m_user.is_active = user_in.is_active
-            if user_in.password:
-                m_user.password_hash = updated.password_hash
-            master_db.commit()
-    except Exception as e:
-        print("Warning syncing updated user to master_db:", e)
-        
+        sync_user_update_to_master(
+            master_db,
+            updated.username,
+            user_in.full_name,
+            user_in.role,
+            user_in.is_active,
+            updated.password_hash if user_in.password else None
+        )
+    except DualDBSyncError as e:
+        logger.error(f"Master DB sync failed for user update '{updated.username}': {e}")
+        # Update succeeded in tenant, master sync failed - log but don't fail request
+
     return updated
 
 @router.delete("/users/{user_id}")
 def delete_existing_user(
-    user_id: int, 
-    db: Session = Depends(get_db), 
+    user_id: int,
+    db: Session = Depends(get_db),
     master_db: Session = Depends(get_master_db),
     current_admin: User = Depends(require_admin)
 ):
+    from app.core.sync import sync_user_delete_to_master
+    import logging
+
+    logger = logging.getLogger(__name__)
     user = delete_user(db, user_id, current_user_id=current_admin.id)
-    
+
     # Also clean up from master_db if present
-    try:
-        m_user = master_db.query(MasterUser).filter(MasterUser.username == user.username).first()
-        if m_user:
-            master_db.delete(m_user)
-            master_db.commit()
-    except Exception as e:
-        print("Warning deleting master user:", e)
-        
+    if not sync_user_delete_to_master(master_db, user.username):
+        logger.warning(f"Failed to sync deletion of user '{user.username}' to master DB")
+
     return {"message": f"Pengguna '{user.username}' berhasil dihapus."}

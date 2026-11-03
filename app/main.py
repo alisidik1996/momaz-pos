@@ -66,23 +66,35 @@ def get_user_from_cookie(request: Request):
     return decode_access_token(token)
 
 def get_template_context(request: Request, extra: dict = None) -> dict:
+    from app.core.cache import get_cache, set_cache
+
     ctx = extra.copy() if extra else {}
     user = get_user_from_cookie(request)
     ctx["user"] = user
     store_name = "POS"
+
     if user and user.get("tenant_slug"):
-        try:
-            from app.database import TenantManager
-            from app.core.models import StoreSettings
-            db = TenantManager.get_session(user["tenant_slug"])
+        # Cache store name per tenant to avoid DB query on every page load
+        cache_key = f"store_name:{user['tenant_slug']}"
+        cached_name = get_cache(cache_key)
+
+        if cached_name:
+            store_name = cached_name
+        else:
             try:
-                s = db.query(StoreSettings).first()
-                if s and s.store_name:
-                    store_name = s.store_name
-            finally:
-                db.close()
-        except Exception:
-            pass
+                from app.database import TenantManager
+                from app.core.models import StoreSettings
+                db = TenantManager.get_session(user["tenant_slug"])
+                try:
+                    s = db.query(StoreSettings).first()
+                    if s and s.store_name:
+                        store_name = s.store_name
+                        set_cache(cache_key, store_name, ttl=600)  # Cache 10 minutes
+                finally:
+                    db.close()
+            except Exception:
+                pass
+
     ctx["store_name"] = store_name
     return ctx
 

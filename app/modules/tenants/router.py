@@ -50,9 +50,10 @@ def register_new_admin(
     response.set_cookie(
         key="access_token",
         value=f"Bearer {token}",
-        httponly=False,
+        httponly=True,  # XSS protection
         max_age=86400 * 7,
-        samesite="lax"
+        samesite="lax",
+        secure=True  # HTTPS only in production
     )
 
     return {
