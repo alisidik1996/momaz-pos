@@ -58,12 +58,21 @@ app.include_router(reports_router)
 
 # Helper to inspect user from cookie
 def get_user_from_cookie(request: Request):
+    from app.core.security import TokenExpiredError, TokenInvalidError
+
     token = extract_token_from_string(request.cookies.get("access_token"))
     if not token:
         token = extract_token_from_string(request.headers.get("Authorization"))
     if not token:
         return None
-    return decode_access_token(token)
+
+    try:
+        return decode_access_token(token)
+    except (TokenExpiredError, TokenInvalidError):
+        # Token invalid (old SECRET_KEY or expired) - return None for graceful redirect
+        return None
+    except Exception:
+        return None
 
 def get_template_context(request: Request, extra: dict = None) -> dict:
     from app.core.cache import get_cache, set_cache
