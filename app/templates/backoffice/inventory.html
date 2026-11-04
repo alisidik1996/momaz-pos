@@ -6,8 +6,8 @@
 <div class="container-fluid px-0">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h3 class="fw-bold mb-1">Manajemen Inventori & Stok Pakaian</h3>
-      <p class="text-muted small mb-0">Pantau peringatan stok menipis, riwayat mutasi stok, penerimaan barang, dan penyesuaian opname.</p>
+      <h3 class="fw-bold mb-1">Manajemen Stok Pakaian</h3>
+      <p class="text-muted small mb-0">Pantau peringatan stok menipis dan riwayat mutasi stok pakaian.</p>
     </div>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-primary" onclick="openStockOpnameModal()">
@@ -19,59 +19,80 @@
     </div>
   </div>
 
-  <!-- Low Stock Alert Section -->
-  <div class="card border-0 shadow-sm mb-4">
-    <div class="card-header bg-danger-subtle text-danger py-3 border-0 d-flex justify-content-between align-items-center">
-      <h6 class="fw-bold mb-0">Peringatan Stok Menipis / Kritis</h6>
-      <span class="small">Perlu restock segera</span>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="low-stock-table">
-          <thead>
-            <tr>
-              <th>Nama Produk</th>
-              <th>Kategori</th>
-              <th>SKU</th>
-              <th>Barcode</th>
-              <th>Sisa Stok</th>
-              <th>Ambang Batas Minimum</th>
-            </tr>
-          </thead>
-          <tbody id="low-stock-table-body">
-            <!-- Populated by backoffice.js -->
-          </tbody>
-        </table>
+  <!-- Tab Navigation -->
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" id="tab-lowstock-btn" data-bs-toggle="tab" data-bs-target="#tab-lowstock" type="button">
+        Stok Tipis
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" id="tab-movements-btn" data-bs-toggle="tab" data-bs-target="#tab-movements" type="button">
+        Riwayat Mutasi
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    <!-- Tab 1: Low Stock -->
+    <div class="tab-pane fade show active" id="tab-lowstock">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-danger-subtle text-danger py-3 border-0 d-flex justify-content-between align-items-center">
+          <h6 class="fw-bold mb-0">Peringatan Stok Menipis / Kritis</h6>
+          <span class="small">Perlu restock segera</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="low-stock-table">
+              <thead>
+                <tr>
+                  <th>Nama Produk</th>
+                  <th>Kategori</th>
+                  <th>SKU</th>
+                  <th>Barcode</th>
+                  <th>Sisa Stok</th>
+                  <th>Ambang Batas Minimum</th>
+                </tr>
+              </thead>
+              <tbody id="low-stock-table-body">
+                <!-- Populated by backoffice.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Stock Movements Ledger -->
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-      <h6 class="fw-bold mb-0">Riwayat Mutasi Stok Terkini</h6>
-      <button class="btn btn-sm btn-outline-secondary" onclick="loadInventoryData()">
-        Refresh
-      </button>
-    </div>
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle mb-0" id="movements-table">
-          <thead>
-            <tr>
-              <th>Waktu</th>
-              <th>Item Pakaian</th>
-              <th>Jenis Mutasi</th>
-              <th>Perubahan</th>
-              <th>Stok Akhir</th>
-              <th>Referensi</th>
-              <th>Catatan</th>
-            </tr>
-          </thead>
-          <tbody id="movements-table-body">
-            <!-- Populated by backoffice.js -->
-          </tbody>
-        </table>
+    <!-- Tab 2: Stock Movements -->
+    <div class="tab-pane fade" id="tab-movements">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+          <h6 class="fw-bold mb-0">Riwayat Mutasi Stok Terkini</h6>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadInventoryData()">
+            Refresh
+          </button>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="movements-table">
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>Item Pakaian</th>
+                  <th>Jenis Mutasi</th>
+                  <th>Perubahan</th>
+                  <th>Stok Akhir</th>
+                  <th>Referensi</th>
+                  <th>Catatan</th>
+                </tr>
+              </thead>
+              <tbody id="movements-table-body">
+                <!-- Populated by backoffice.js -->
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
