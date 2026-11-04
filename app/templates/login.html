@@ -159,7 +159,7 @@
         const res = await api.post("/api/auth/login", { username, password });
         posSound.success();
 
-        if (!res.user.has_tenant) {
+        if (!res.has_tenant) {
           showToast("Login berhasil! Anda belum memiliki toko retail, mengalihkan ke Setup Toko...", "info");
           setTimeout(() => {
             window.location.href = "/setup";
