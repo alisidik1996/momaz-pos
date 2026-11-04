@@ -146,10 +146,13 @@ async function loadInventoryData() {
     // Low stock
     const lowStock = await api.get("/api/inventory/low-stock");
     const lowTbody = document.getElementById("low-stock-table-body");
+    const lowHeader = document.getElementById("low-stock-header");
     if (lowTbody) {
       if (lowStock.length === 0) {
-        lowTbody.innerHTML = `<tr><td colspan="6" class="text-center text-success py-3"><i class="bi bi-check-circle me-1"></i> Semua stok pakaian aman.</td></tr>`;
+        lowTbody.innerHTML = `<tr><td colspan="6" class="text-center text-success py-3">Semua stok pakaian aman.</td></tr>`;
+        if (lowHeader) lowHeader.style.display = "none";
       } else {
+        if (lowHeader) lowHeader.style.display = "";
         lowTbody.innerHTML = lowStock.map(it => `
           <tr>
             <td class="fw-bold">${escapeHTML(it.product_name)}</td>
