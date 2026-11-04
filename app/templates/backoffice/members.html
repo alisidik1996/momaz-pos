@@ -74,12 +74,12 @@
 <div class="container-fluid px-0">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h3 class="fw-bold mb-1"><i class="bi bi-people-fill text-primary me-2"></i>Member & Affiliate</h3>
+      <h3 class="fw-bold mb-1">Member & Affiliate</h3>
       <p class="text-muted small mb-0">Kelola data kartu member, generate barcode 12 digit, atur persentase/nominal diskon member, dan komisi affiliate per produk.</p>
     </div>
     <div class="d-flex gap-2">
       <button class="btn btn-primary" onclick="openNewMemberModal()">
-        <i class="bi bi-person-plus me-1"></i> Tambah Member Baru
+        Tambah Member Baru
       </button>
     </div>
   </div>
@@ -88,17 +88,17 @@
   <ul class="nav nav-pills nav-fill mb-4 bg-white p-2 rounded shadow-sm border" id="memberAffiliateTabs" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active fw-bold py-2 d-flex align-items-center justify-content-center gap-2" id="tab-members-btn" data-bs-toggle="tab" data-bs-target="#tab-members-content" type="button" role="tab">
-        <i class="bi bi-person-badge fs-5"></i> 1. Daftar Member
+        1. Daftar Member
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link fw-bold py-2 d-flex align-items-center justify-content-center gap-2" id="tab-discounts-btn" data-bs-toggle="tab" data-bs-target="#tab-discounts-content" type="button" role="tab">
-        <i class="bi bi-percent fs-5"></i> 2. Diskon Belanja Member
+        2. Diskon Belanja Member
       </button>
     </li>
     <li class="nav-item" role="presentation">
       <button class="nav-link fw-bold py-2 d-flex align-items-center justify-content-center gap-2" id="tab-commissions-btn" data-bs-toggle="tab" data-bs-target="#tab-commissions-content" type="button" role="tab">
-        <i class="bi bi-cash-coin fs-5"></i> 3. Komisi Affiliate Member
+        3. Komisi Affiliate Member
       </button>
     </li>
   </ul>
@@ -137,13 +137,12 @@
     <div class="tab-pane fade" id="tab-discounts-content" role="tabpanel">
       <div class="alert alert-info d-flex align-items-center justify-content-between py-2 mb-3 shadow-sm border-0">
         <div class="d-flex align-items-center gap-2 small">
-          <i class="bi bi-info-circle fs-5"></i>
           <div>
             <strong>Pengaturan Diskon Member:</strong> Tentukan potongan harga khusus yang otomatis diberikan saat member berbelanja di kasir. Bisa berupa <strong>Persentase (%)</strong> atau <strong>Nominal (Rp)</strong> per produk.
           </div>
         </div>
         <button class="btn btn-sm btn-success fw-bold text-nowrap ms-2" onclick="saveAllDiscountRules()">
-          <i class="bi bi-check2-all me-1"></i> Simpan Semua Diskon
+          Simpan Semua Diskon
         </button>
       </div>
 
@@ -175,13 +174,12 @@
     <div class="tab-pane fade" id="tab-commissions-content" role="tabpanel">
       <div class="alert alert-success d-flex align-items-center justify-content-between py-2 mb-3 shadow-sm border-0">
         <div class="d-flex align-items-center gap-2 small">
-          <i class="bi bi-cash-stack fs-5"></i>
           <div>
             <strong>Program Komisi Affiliate:</strong> Berikan komisi kepada member saat kartu member mereka digunakan untuk transaksi belanja di kasir. Komisi dapat dihitung berupa <strong>Persentase (%)</strong> dari harga jual atau <strong>Nominal (Rp)</strong> tetap per item yang terjual.
           </div>
         </div>
         <button class="btn btn-sm btn-primary fw-bold text-nowrap ms-2" onclick="saveAllCommissionRules()">
-          <i class="bi bi-check2-all me-1"></i> Simpan Semua Komisi
+          Simpan Semua Komisi
         </button>
       </div>
 
@@ -211,7 +209,7 @@
       <!-- Commission History Log -->
       <div class="card border-0 shadow-sm">
         <div class="card-header bg-white py-3">
-          <h5 class="fw-bold mb-0"><i class="bi bi-clock-history text-secondary me-2"></i>Riwayat Komisi Transaksi Affiliate</h5>
+          <h5 class="fw-bold mb-0">Riwayat Komisi Transaksi Affiliate</h5>
         </div>
         <div class="card-body p-0">
           <div class="table-responsive">
@@ -245,7 +243,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
-        <h5 class="modal-title fw-bold" id="memberModalTitle"><i class="bi bi-person-badge me-2"></i>Tambah Member Baru</h5>
+        <h5 class="modal-title fw-bold" id="memberModalTitle">Tambah Member Baru</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form onsubmit="handleMemberFormSubmit(event)">
@@ -257,11 +255,11 @@
             <div class="d-flex justify-content-between align-items-center mb-1">
               <label class="form-label fw-bold mb-0">ID Member (12 Digit Alfanumerik)</label>
               <button type="button" class="btn btn-sm btn-outline-primary py-0" onclick="regenerateMemberId()" title="Acak Ulang ID Member">
-                <i class="bi bi-arrow-repeat me-1"></i> Acak Ulang
+                Acak Ulang
               </button>
             </div>
             <div class="input-group">
-              <span class="input-group-text bg-light fw-bold"><i class="bi bi-upc-scan"></i></span>
+              <span class="input-group-text bg-light fw-bold"></span>
               <input type="text" id="modal-member-code" class="form-control font-monospace fw-bold fs-5 text-primary text-uppercase" maxlength="12" required oninput="renderModalBarcode(this.value)">
             </div>
             <small class="text-muted" style="font-size:0.75rem;">ID unik 12 digit acak yang di-generate menjadi barcode batang.</small>
@@ -296,7 +294,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button type="submit" class="btn btn-primary fw-bold px-4">
-            <i class="bi bi-save me-1"></i> Simpan Member
+            Simpan Member
           </button>
         </div>
       </form>
@@ -309,7 +307,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title fw-bold"><i class="bi bi-printer me-2"></i>Kartu Member & Barcode</h5>
+        <h5 class="modal-title fw-bold">Kartu Member & Barcode</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body p-4 bg-light text-center">
@@ -319,11 +317,11 @@
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
               <h5 class="fw-bold mb-0 text-white d-flex align-items-center gap-2">
-                <i class="bi bi-shop text-primary"></i> <span class="app-store-name">Momaz</span>
+                <span class="app-store-name">Momaz</span>
               </h5>
               <small class="text-white-50" style="font-size:0.7rem;">KARTU MEMBER & AFFILIATE</small>
             </div>
-            <span class="member-card-badge"><i class="bi bi-gem me-1"></i> VIP MEMBER</span>
+            <span class="member-card-badge">VIP MEMBER</span>
           </div>
 
           <div class="mb-3">
@@ -345,7 +343,7 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
         <button type="button" class="btn btn-primary fw-bold" onclick="printMemberCard()">
-          <i class="bi bi-printer me-1"></i> Cetak Kartu Member
+          Cetak Kartu Member
         </button>
       </div>
     </div>
@@ -385,7 +383,7 @@
     if (!tbody) return;
 
     if (members.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5"><i class="bi bi-people fs-2 d-block mb-2"></i>Belum ada data member terdaftar.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5">Belum ada data member terdaftar.</td></tr>`;
       return;
     }
 
@@ -407,20 +405,18 @@
           <td><code>${escapeHTML(m.phone || '-')}</code></td>
           <td class="fw-bold text-success">${formatRupiah(m.total_spend)}</td>
           <td class="fw-bold text-primary">
-            <i class="bi bi-cash-coin me-1"></i>${formatRupiah(m.total_commission || 0)}
+            ${formatRupiah(m.total_commission || 0)}
           </td>
           <td><small class="text-muted">${formatDate(m.created_at)}</small></td>
           <td class="text-end">
             <div class="btn-group btn-group-sm">
               <button class="btn btn-outline-primary" onclick="openPrintCardModal(${m.id})" title="Cetak Kartu Member">
-                <i class="bi bi-card-heading me-1"></i> Kartu
+                Kartu
               </button>
               <button class="btn btn-outline-secondary" onclick="openEditMemberModal(${m.id})" title="Edit Data Member">
-                <i class="bi bi-pencil"></i>
-              </button>
+                </button>
               <button class="btn btn-outline-danger" onclick="deleteMember(${m.id}, ${jsonForAttribute(m.name)})" title="Hapus Member">
-                <i class="bi bi-trash"></i>
-              </button>
+                </button>
             </div>
           </td>
         </tr>
@@ -468,7 +464,7 @@
     document.getElementById("modal-member-phone").value = "";
     document.getElementById("modal-member-email").value = "";
     document.getElementById("modal-member-address").value = "";
-    document.getElementById("memberModalTitle").innerHTML = `<i class="bi bi-person-badge me-2"></i>Tambah Member Baru`;
+    document.getElementById("memberModalTitle").innerHTML = `Tambah Member Baru`;
 
     // Fetch fresh 12-digit random alphanumeric ID
     await regenerateMemberId();
@@ -486,7 +482,7 @@
     document.getElementById("modal-member-email").value = m.email || "";
     document.getElementById("modal-member-address").value = m.address || "";
     document.getElementById("modal-member-code").value = m.member_id || "";
-    document.getElementById("memberModalTitle").innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Data Member`;
+    document.getElementById("memberModalTitle").innerHTML = `Edit Data Member`;
 
     renderModalBarcode(m.member_id || "");
 
@@ -647,7 +643,7 @@
           </td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary" onclick="saveSingleDiscountRule(${p.id})">
-              <i class="bi bi-save"></i> Simpan
+              Simpan
             </button>
           </td>
         </tr>
@@ -776,7 +772,7 @@
           </td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary" onclick="saveSingleCommissionRule(${p.id})">
-              <i class="bi bi-save"></i> Simpan
+              Simpan
             </button>
           </td>
         </tr>

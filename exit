@@ -1,0 +1,134 @@
+warning: in the working copy of 'app/main.py', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'bash.exe.stackdump', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/conftest.py', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/app/main.py b/app/main.py[m
+[1mindex e981629..b3a8b8d 100644[m
+[1m--- a/app/main.py[m
+[1m+++ b/app/main.py[m
+[36m@@ -20,6 +20,12 @@[m [mfrom app.modules.shifts.router import router as shifts_router[m
+ from app.modules.sales.router import router as sales_router[m
+ from app.modules.returns.router import router as returns_router[m
+ from app.modules.reports.router import router as reports_router[m
+[32m+[m[32mtry:[m
+[32m+[m[32m    from app.modules.monitoring.router import router as monitoring_router[m
+[32m+[m[32mexcept ModuleNotFoundError as exc:[m
+[32m+[m[32m    if exc.name not in {"app.modules.monitoring", "app.modules.monitoring.router"}:[m
+[32m+[m[32m        raise[m
+[32m+[m[32m    monitoring_router = None[m
+ [m
+ BASE_DIR = Path(__file__).resolve().parent[m
+ [m
+[36m@@ -55,6 +61,8 @@[m [mapp.include_router(shifts_router)[m
+ app.include_router(sales_router)[m
+ app.include_router(returns_router)[m
+ app.include_router(reports_router)[m
+[32m+[m[32mif monitoring_router is not None:[m
+[32m+[m[32m    app.include_router(monitoring_router)[m
+ [m
+ # Helper to inspect user from cookie[m
+ def get_user_from_cookie(request: Request):[m
+[36m@@ -261,3 +269,14 @@[m [mdef backoffice_users(request: Request):[m
+     return templates.TemplateResponse(request=request, name="backoffice/users.html", context=get_template_context(request, {[m
+         "active_page": "users"[m
+     }))[m
+[32m+[m
+[32m+[m[32m@app.get("/backoffice/monitoring", response_class=HTMLResponse)[m
+[32m+[m[32mdef backoffice_monitoring(request: Request):[m
+[32m+[m[32m    check = check_backoffice_access(request)[m
+[32m+[m[32m    if check:[m
+[32m+[m[32m        return check[m
+[32m+[m[32m    if monitoring_router is None or not (BASE_DIR / "templates" / "backoffice" / "monitoring.html").is_file():[m
+[32m+[m[32m        raise HTTPException(status_code=404, detail="Modul monitoring belum tersedia.")[m
+[32m+[m[32m    return templates.TemplateResponse(request=request, name="backoffice/monitoring.html", context=get_template_context(request, {[m
+[32m+[m[32m        "active_page": "monitoring"[m
+[32m+[m[32m    }))[m
+[1mdiff --git a/bash.exe.stackdump b/bash.exe.stackdump[m
+[1mindex 079ee3c..e3f8cfb 100644[m
+[1m--- a/bash.exe.stackdump[m
+[1m+++ b/bash.exe.stackdump[m
+[36m@@ -1,9 +1,9 @@[m
+ Stack trace:[m
+ Frame        Function    Args[m
+[31m-000FFFFB9F0  00210062B0E (00210297178, 00210275E3E, 000FFFFB9F0, 000FFFFA8F0)[m
+[31m-000FFFFB9F0  0021004846A (00000000000, 00000000000, 00000000000, 00000000000)[m
+[31m-000FFFFB9F0  002100484A2 (00210297229, 000FFFFB8A8, 000FFFFB9F0, 00000000000)[m
+[31m-000FFFFB9F0  002100D2FFE (00000000000, 00000000000, 00000000000, 00000000000)[m
+[31m-000FFFFB9F0  002100D3125 (000FFFFBA00, 00000000000, 00000000000, 00000000000)[m
+[31m-001004F221F  002100D46E5 (000FFFFBA00, 00000000000, 00000000000, 00000000000)[m
+[32m+[m[32m000FFFFB5A0  00210062B0E (00210297178, 00210275E3E, 000FFFFB5A0, 000FFFFA4A0)[m
+[32m+[m[32m000FFFFB5A0  0021004846A (00000000000, 00000000000, 00000000000, 00000000000)[m
+[32m+[m[32m000FFFFB5A0  002100484A2 (00210297229, 000FFFFB458, 000FFFFB5A0, 00000000000)[m
+[32m+[m[32m000FFFFB5A0  002100D2FFE (00000000000, 00000000000, 00000000000, 00000000000)[m
+[32m+[m[32m000FFFFB5A0  002100D3125 (000FFFFB5B0, 00000000000, 00000000000, 00000000000)[m
+[32m+[m[32m001004F221F  002100D46E5 (000FFFFB5B0, 00000000000, 00000000000, 00000000000)[m
+ End of stack trace[m
+[1mdiff --git a/tests/conftest.py b/tests/conftest.py[m
+[1mindex fb37790..9ddb048 100644[m
+[1m--- a/tests/conftest.py[m
+[1m+++ b/tests/conftest.py[m
+[36m@@ -1,17 +1,57 @@[m
+[32m+[m[32mfrom pathlib import Path[m
+[32m+[m[32mfrom tempfile import TemporaryDirectory[m
+[32m+[m
+ import pytest[m
+ from sqlalchemy import create_engine[m
+ from sqlalchemy.orm import sessionmaker[m
+[31m-from app.database import Base[m
+[32m+[m[32mfrom sqlalchemy.pool import StaticPool[m
+[32m+[m
+[32m+[m[32mfrom app.config import settings[m
+[32m+[m
+[32m+[m[32m# Configure the application before importing its engines. Endpoint tests must[m
+[32m+[m[32m# never connect to a configured cloud database or the developer's local data.[m
+[32m+[m[32m_test_data = TemporaryDirectory(prefix="momaz-pos-tests-")[m
+[32m+[m[32m_test_root = Path(_test_data.name)[m
+[32m+[m[32msettings.DATABASE_URL = ""[m
+[32m+[m[32msettings.DATABASE_URL_UNPOOLED = ""[m
+[32m+[m[32msettings.MASTER_DATABASE_PATH = _test_root / "master.db"[m
+[32m+[m[32msettings.MASTER_DATABASE_URL = f"sqlite:///{settings.MASTER_DATABASE_PATH}"[m
+[32m+[m[32msettings.MASTER_DATABASE_URL_UNPOOLED = settings.MASTER_DATABASE_URL[m
+[32m+[m[32msettings.TENANTS_DIR = _test_root / "tenants"[m
+[32m+[m[32msettings.TENANTS_DIR.mkdir()[m
+[32m+[m
+[32m+[m[32mfrom app.database import Base, TenantManager, master_engine[m
+ from app.core.security import hash_password[m
+ from app.core.models import StoreSettings[m
+ from app.modules.auth.models import User[m
+[31m-from app.modules.catalog.models import Category, Brand, Product, ProductVariant[m
+ [m
+ TEST_DATABASE_URL = "sqlite:///:memory:"[m
+ [m
+[32m+[m[32m@pytest.fixture(scope="session", autouse=True)[m
+[32m+[m[32mdef isolated_application_data():[m
+[32m+[m[32m    yield[m
+[32m+[m[32m    for slug in list(TenantManager._engines):[m
+[32m+[m[32m        TenantManager.close_tenant(slug)[m
+[32m+[m[32m    master_engine.dispose()[m
+[32m+[m[32m    _test_data.cleanup()[m
+[32m+[m
+[32m+[m
+[32m+[m[32m@pytest.fixture(autouse=True)[m
+[32m+[m[32mdef isolated_uploads(monkeypatch):[m
+[32m+[m[32m    from app.core import storage[m
+[32m+[m
+[32m+[m[32m    monkeypatch.delenv("BLOB_READ_WRITE_TOKEN", raising=False)[m
+[32m+[m[32m    monkeypatch.delenv("BLOB_STORE_ID", raising=False)[m
+[32m+[m[32m    monkeypatch.setattr(storage, "LOCAL_UPLOAD_DIR", _test_root / "uploads" / "products")[m
+[32m+[m
+[32m+[m
+ @pytest.fixture(scope="function")[m
+ def db_session():[m
+[31m-    engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})[m
+[32m+[m[32m    engine = create_engine([m
+[32m+[m[32m        TEST_DATABASE_URL,[m
+[32m+[m[32m        connect_args={"check_same_thread": False},[m
+[32m+[m[32m        poolclass=StaticPool,[m
+[32m+[m[32m    )[m
+     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)[m
+     Base.metadata.create_all(bind=engine)[m
+     [m
+[36m@@ -38,3 +78,4 @@[m [mdef db_session():[m
+     [m
+     session.close()[m
+     Base.metadata.drop_all(bind=engine)[m
+[32m+[m[32m    engine.dispose()[m

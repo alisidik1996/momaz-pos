@@ -11,10 +11,10 @@
     </div>
     <div class="d-flex gap-2">
       <button class="btn btn-outline-primary" onclick="openStockOpnameModal()">
-        <i class="bi bi-pencil-square me-1"></i> Penyesuaian (Opname)
+        Penyesuaian (Opname)
       </button>
       <button class="btn btn-success" onclick="openStockInModal()">
-        <i class="bi bi-box-arrow-in-down me-1"></i> Penerimaan Barang (Stock In)
+        Penerimaan Barang (Stock In)
       </button>
     </div>
   </div>
@@ -22,7 +22,7 @@
   <!-- Low Stock Alert Section -->
   <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-danger-subtle text-danger py-3 border-0 d-flex justify-content-between align-items-center">
-      <h6 class="fw-bold mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i> Peringatan Stok Menipis / Kritis</h6>
+      <h6 class="fw-bold mb-0">Peringatan Stok Menipis / Kritis</h6>
       <span class="small">Perlu restock segera</span>
     </div>
     <div class="card-body p-0">
@@ -49,9 +49,9 @@
   <!-- Stock Movements Ledger -->
   <div class="card border-0 shadow-sm">
     <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
-      <h6 class="fw-bold mb-0"><i class="bi bi-clock-history me-2"></i> Riwayat Mutasi Stok Terkini</h6>
+      <h6 class="fw-bold mb-0">Riwayat Mutasi Stok Terkini</h6>
       <button class="btn btn-sm btn-outline-secondary" onclick="loadInventoryData()">
-        <i class="bi bi-arrow-clockwise"></i> Refresh
+        Refresh
       </button>
     </div>
     <div class="card-body p-0">
@@ -84,7 +84,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
-        <h5 class="modal-title fw-bold"><i class="bi bi-box-arrow-in-down me-2"></i> Penerimaan Barang (Restock)</h5>
+        <h5 class="modal-title fw-bold">Penerimaan Barang (Restock)</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <form onsubmit="handleStockInSubmit(event)">
@@ -93,11 +93,10 @@
           <div class="mb-3 position-relative">
             <label class="form-label fw-bold">Cari Produk / Scan Barcode / Ketik SKU</label>
             <div class="input-group">
-              <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+              <span class="input-group-text bg-white"></span>
               <input type="text" id="stockin-code" class="form-control" placeholder="Ketik nama produk, SKU, atau barcode..." autocomplete="off" required oninput="handleStockInSearchInput(this.value)">
               <button class="btn btn-outline-secondary" type="button" onclick="clearStockInSelection()" id="stockin-clear-btn" style="display: none;">
-                <i class="bi bi-x-lg"></i>
-              </button>
+                </button>
             </div>
             <!-- AJAX Suggestions Dropdown -->
             <div id="stockin-search-results" class="list-group shadow position-absolute w-100 mt-1" style="z-index: 1060; max-height: 240px; overflow-y: auto; display: none;"></div>
@@ -150,7 +149,7 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-warning">
-        <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-2"></i> Penyesuaian Stok (Opname Fisik)</h5>
+        <h5 class="modal-title fw-bold">Penyesuaian Stok (Opname Fisik)</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form onsubmit="handleOpnameSubmit(event)">
@@ -159,11 +158,10 @@
           <div class="mb-3 position-relative">
             <label class="form-label fw-bold">Cari Produk / Scan Barcode / Ketik SKU</label>
             <div class="input-group">
-              <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+              <span class="input-group-text bg-white"></span>
               <input type="text" id="opname-code" class="form-control" placeholder="Ketik nama produk, SKU, atau scan barcode..." autocomplete="off" required oninput="handleOpnameSearchInput(this.value)">
               <button class="btn btn-outline-secondary" type="button" onclick="clearOpnameSelection()" id="opname-clear-btn" style="display: none;">
-                <i class="bi bi-x-lg"></i>
-              </button>
+                </button>
             </div>
             <!-- AJAX Suggestions Dropdown -->
             <div id="opname-search-results" class="list-group shadow position-absolute w-100 mt-1" style="z-index: 1060; max-height: 240px; overflow-y: auto; display: none;"></div>
@@ -274,7 +272,7 @@
       try {
         const products = await api.get(`/api/catalog/products?q=${encodeURIComponent(trimmed)}`);
         if (!products || products.length === 0) {
-          dropdown.innerHTML = `<div class="list-group-item text-muted small py-2 text-center"><i class="bi bi-search me-1"></i> Produk tidak ditemukan</div>`;
+          dropdown.innerHTML = `<div class="list-group-item text-muted small py-2 text-center">Produk tidak ditemukan</div>`;
           dropdown.style.display = "block";
           return;
         }
@@ -353,13 +351,13 @@
     alertBox.style.display = "block";
     if (diff < 0) {
       alertBox.className = "mt-2 p-2 rounded bg-danger-subtle text-danger fw-semibold small text-center";
-      alertBox.innerHTML = `<i class="bi bi-arrow-down-circle-fill me-1"></i> Selisih: <strong>${diff} pcs</strong> (Stok sistem akan berkurang ${Math.abs(diff)} pcs)`;
+      alertBox.innerHTML = `Selisih: <strong>${diff} pcs</strong> (Stok sistem akan berkurang ${Math.abs(diff)} pcs)`;
     } else if (diff > 0) {
       alertBox.className = "mt-2 p-2 rounded bg-success-subtle text-success fw-semibold small text-center";
-      alertBox.innerHTML = `<i class="bi bi-arrow-up-circle-fill me-1"></i> Selisih: <strong>+${diff} pcs</strong> (Stok sistem akan bertambah ${diff} pcs)`;
+      alertBox.innerHTML = `Selisih: <strong>+${diff} pcs</strong> (Stok sistem akan bertambah ${diff} pcs)`;
     } else {
       alertBox.className = "mt-2 p-2 rounded bg-info-subtle text-info fw-semibold small text-center";
-      alertBox.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> Stok Fisik Sesuai dengan Sistem (0 pcs)`;
+      alertBox.innerHTML = `Stok Fisik Sesuai dengan Sistem (0 pcs)`;
     }
   }
 
@@ -379,7 +377,7 @@
       try {
         const products = await api.get(`/api/catalog/products?q=${encodeURIComponent(trimmed)}`);
         if (!products || products.length === 0) {
-          dropdown.innerHTML = `<div class="list-group-item text-muted small py-2 text-center"><i class="bi bi-search me-1"></i> Produk tidak ditemukan</div>`;
+          dropdown.innerHTML = `<div class="list-group-item text-muted small py-2 text-center">Produk tidak ditemukan</div>`;
           dropdown.style.display = "block";
           return;
         }

@@ -11,7 +11,7 @@
     </div>
     <div class="d-flex gap-2">
       <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newCustomerModal">
-        <i class="bi bi-person-plus me-1"></i> Tambah Pelanggan Baru
+        Tambah Pelanggan Baru
       </button>
     </div>
   </div>
@@ -96,7 +96,7 @@
 
       tbody.innerHTML = customers.map(c => `
         <tr>
-          <td class="fw-bold"><i class="bi bi-person me-2 text-primary"></i>${escapeHTML(c.name)}</td>
+          <td class="fw-bold">${escapeHTML(c.name)}</td>
           <td><code>${escapeHTML(c.phone || '-')}</code></td>
           <td>${escapeHTML(c.email || '-')}</td>
           <td><small class="text-muted">${escapeHTML(c.address || '-')}</small></td>

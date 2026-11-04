@@ -20,22 +20,21 @@
     <header class="pos-header">
       <div class="d-flex align-items-center gap-3">
         <h5 class="mb-0 fw-bold d-flex align-items-center gap-2">
-          <i class="bi bi-shop text-primary"></i> <span class="app-store-name">{{ store_name|default('POS') }}</span>
+          <span class="app-store-name">{{ store_name|default('POS') }}</span>
         </h5>
         <div id="shift-status-badge" class="badge bg-secondary">Memeriksa Shift...</div>
       </div>
 
       <div class="d-flex align-items-center gap-3">
         <div class="text-end me-2 d-none d-md-block">
-          <div class="fw-semibold small"><i class="bi bi-person-circle me-1"></i> {% if user %}{{ user.sub }}{% else %}Kasir{% endif %}</div>
+          <div class="fw-semibold small">{% if user %}{{ user.sub }}{% else %}Kasir{% endif %}</div>
           <div class="text-secondary" style="font-size:0.75rem;" id="live-clock">-</div>
         </div>
         <a href="/backoffice/dashboard" class="btn btn-outline-light btn-sm">
-          <i class="bi bi-gear me-1"></i> Backoffice
+          Backoffice
         </a>
         <button onclick="handleLogout()" class="btn btn-outline-danger btn-sm">
-          <i class="bi bi-box-arrow-right"></i>
-        </button>
+          </button>
       </div>
     </header>
 
@@ -46,13 +45,13 @@
         <!-- Search & Scanner Input Bar -->
         <div class="pos-search-bar d-flex gap-2">
           <div class="input-group" style="max-width: 380px;">
-            <span class="input-group-text bg-white border-primary"><i class="bi bi-upc-scan text-primary fs-5"></i></span>
+            <span class="input-group-text bg-white border-primary"></span>
             <input type="text" id="barcode-scanner-input" class="form-control border-primary fw-bold" 
                    placeholder="Scan Barcode / Tekan F2..." autofocus autocomplete="off">
           </div>
 
           <div class="input-group flex-grow-1">
-            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+            <span class="input-group-text bg-white"></span>
             <input type="text" id="search-input" class="form-control" placeholder="Cari nama pakaian (F1)...">
           </div>
         </div>
@@ -86,7 +85,7 @@
           </div>
           <div>
             <button class="btn btn-sm btn-outline-danger" onclick="clearCart()" title="Kosongkan">
-              <i class="bi bi-trash me-1"></i> Kosongkan
+              Kosongkan
             </button>
           </div>
         </div>
@@ -94,7 +93,7 @@
         <!-- Customer Selector -->
         <div class="p-2 border-bottom bg-light">
           <div class="input-group input-group-sm">
-            <span class="input-group-text bg-white"><i class="bi bi-person"></i></span>
+            <span class="input-group-text bg-white"></span>
             <select class="form-select form-select-sm" id="customer-select" onchange="handleCustomerChange(this)">
               <option value="">Pelanggan Umum (Tanpa Member)</option>
             </select>
@@ -128,7 +127,7 @@
           <!-- Checkout Button -->
           <div class="mt-3">
             <button class="btn btn-primary btn-lg w-100 fw-bold py-2" id="btn-checkout-pay" onclick="initiateCheckoutFlow()" disabled>
-              <i class="bi bi-credit-card-2-front me-1"></i> BAYAR (F8)
+              BAYAR (F8)
             </button>
           </div>
         </div>
@@ -143,7 +142,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
-          <h5 class="modal-title fw-bold"><i class="bi bi-cash-stack me-2"></i> Buka Shift Kasir Baru</h5>
+          <h5 class="modal-title fw-bold">Buka Shift Kasir Baru</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Tutup"></button>
         </div>
         <div class="modal-body p-4">
@@ -159,7 +158,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary w-100 fw-bold py-2" onclick="submitOpenShift()">
-            <i class="bi bi-check2-circle me-1"></i> Mulai Shift Kasir
+            Mulai Shift Kasir
           </button>
         </div>
       </div>
@@ -171,7 +170,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header bg-dark text-white">
-          <h5 class="modal-title fw-bold"><i class="bi bi-door-closed me-2"></i> Tutup Shift & Rekonsiliasi Kas</h5>
+          <h5 class="modal-title fw-bold">Tutup Shift & Rekonsiliasi Kas</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-4">
@@ -204,7 +203,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button type="button" class="btn btn-danger fw-bold px-4" onclick="submitCloseShift()">
-            <i class="bi bi-lock me-1"></i> Tutup Shift Resmi
+            Tutup Shift Resmi
           </button>
         </div>
       </div>
@@ -216,7 +215,7 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content shadow-lg border-0">
         <div class="modal-header bg-dark text-white">
-          <h5 class="modal-title fw-bold"><i class="bi bi-person-badge text-warning me-2"></i>Konfirmasi Member & Affiliate</h5>
+          <h5 class="modal-title fw-bold">Konfirmasi Member & Affiliate</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopMemberCameraScanner()"></button>
         </div>
         <div class="modal-body p-4">
@@ -229,12 +228,12 @@
           <ul class="nav nav-pills nav-fill mb-3 bg-light p-1 rounded border" id="memberCheckNav" role="tablist">
             <li class="nav-item">
               <button class="nav-link active fw-bold py-2" id="nav-camera-tab" data-bs-toggle="pill" data-bs-target="#tab-camera-scan" type="button" onclick="startMemberCameraScanner()">
-                <i class="bi bi-camera-video me-1"></i> 1. Buka Kamera (Scan Barcode)
+                1. Buka Kamera (Scan Barcode)
               </button>
             </li>
             <li class="nav-item">
               <button class="nav-link fw-bold py-2" id="nav-manual-tab" data-bs-toggle="pill" data-bs-target="#tab-manual-input" type="button" onclick="stopMemberCameraScanner()">
-                <i class="bi bi-input-cursor me-1"></i> 2. Input No. HP / ID Member
+                2. Input No. HP / ID Member
               </button>
             </li>
           </ul>
@@ -244,16 +243,15 @@
             <div class="tab-pane fade show active text-center" id="tab-camera-scan">
               <div id="member-camera-reader" style="width: 100%; max-width: 380px; min-height: 220px; margin: 0 auto; background: #000; border-radius: 8px; overflow: hidden;" class="d-flex align-items-center justify-content-center text-white">
                 <div class="text-center p-3" id="camera-placeholder">
-                  <i class="bi bi-camera fs-1 text-secondary d-block mb-2"></i>
                   <small class="text-white-50">Klik tombol di bawah untuk mengaktifkan kamera scanner.</small>
                 </div>
               </div>
               <div class="mt-2 d-flex justify-content-center gap-2">
                 <button type="button" class="btn btn-sm btn-outline-primary fw-semibold" onclick="startMemberCameraScanner()">
-                  <i class="bi bi-play-circle me-1"></i> Aktifkan Kamera
+                  Aktifkan Kamera
                 </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" onclick="stopMemberCameraScanner()">
-                  <i class="bi bi-stop-circle me-1"></i> Matikan Kamera
+                  Matikan Kamera
                 </button>
               </div>
               <small class="text-muted d-block mt-2" style="font-size:0.75rem;">Arahkan barcode batang kartu member ke arah lensa kamera.</small>
@@ -264,10 +262,10 @@
               <div class="mb-3">
                 <label class="form-label fw-bold small">Masukkan Nomor Handphone atau 12 Digit ID Member</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                  <span class="input-group-text bg-white"></span>
                   <input type="text" id="member-manual-input" class="form-control" placeholder="Contoh: 08123456789 atau 12 Digit ID..." onkeydown="if(event.key==='Enter'){event.preventDefault();searchMemberManual();}">
                   <button type="button" class="btn btn-primary fw-bold" onclick="searchMemberManual()">
-                    <i class="bi bi-search me-1"></i> Cari Member
+                    Cari Member
                   </button>
                 </div>
               </div>
@@ -279,16 +277,16 @@
           <div id="selected-member-card" style="display: none;" class="p-3 bg-success-subtle border border-success rounded mb-3">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <span class="badge bg-success mb-1"><i class="bi bi-check-circle me-1"></i> MEMBER TERVERIFIKASI</span>
+                <span class="badge bg-success mb-1">MEMBER TERVERIFIKASI</span>
                 <h5 class="fw-bold mb-0 text-success-emphasis" id="active-member-name">-</h5>
                 <div class="small text-muted font-monospace" id="active-member-details">-</div>
               </div>
               <button type="button" class="btn btn-sm btn-outline-danger" onclick="cancelSelectedMember()" title="Ganti Member">
-                <i class="bi bi-x-circle me-1"></i> Batal
+                Batal
               </button>
             </div>
             <div class="mt-2 pt-2 border-top border-success-subtle d-flex justify-content-between small">
-              <span class="text-success-emphasis fw-semibold"><i class="bi bi-tag-fill me-1"></i> Total Hemat Diskon Member:</span>
+              <span class="text-success-emphasis fw-semibold">Total Hemat Diskon Member:</span>
               <strong class="text-success" id="active-member-discount-total">Rp 0</strong>
             </div>
           </div>
@@ -296,10 +294,10 @@
         </div>
         <div class="modal-footer d-flex justify-content-between">
           <button type="button" class="btn btn-outline-secondary" onclick="continueWithoutMember()">
-            <i class="bi bi-person-x me-1"></i> Pelanggan Umum (Tanpa Member)
+            Pelanggan Umum (Tanpa Member)
           </button>
           <button type="button" class="btn btn-success fw-bold px-4" id="btn-proceed-with-member" onclick="proceedToPaymentWithMember()" disabled>
-            <i class="bi bi-arrow-right-circle me-1"></i> Lanjutkan Pembayaran
+            Lanjutkan Pembayaran
           </button>
         </div>
       </div>
@@ -311,7 +309,7 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold"><i class="bi bi-wallet2 me-2"></i> Pembayaran Transaksi</h5>
+          <h5 class="modal-title fw-bold">Pembayaran Transaksi</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-4">
@@ -326,13 +324,13 @@
           <!-- Payment Methods Tabs -->
           <div class="d-flex gap-2 mb-4">
             <button class="btn btn-primary pay-method-btn flex-grow-1 py-2 fw-semibold" id="method-btn-cash" onclick="setPaymentMethod('cash')">
-              <i class="bi bi-cash-coin me-1"></i> Tunai (Cash)
+              Tunai (Cash)
             </button>
             <button class="btn btn-outline-primary pay-method-btn flex-grow-1 py-2 fw-semibold" id="method-btn-qris" onclick="setPaymentMethod('qris')">
-              <i class="bi bi-qr-code me-1"></i> QRIS Dinamis
+              QRIS Dinamis
             </button>
             <button class="btn btn-outline-primary pay-method-btn flex-grow-1 py-2 fw-semibold" id="method-btn-card" onclick="setPaymentMethod('card')">
-              <i class="bi bi-credit-card me-1"></i> EDC / Debit
+              EDC / Debit
             </button>
           </div>
 
@@ -385,7 +383,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
           <button type="button" class="btn btn-success fw-bold px-4 py-2" id="btn-execute-payment" onclick="executePayment()">
-            <i class="bi bi-check-circle me-1"></i> Selesaikan Transaksi
+            Selesaikan Transaksi
           </button>
         </div>
       </div>
@@ -397,7 +395,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold"><i class="bi bi-printer me-2"></i> Struk Belanja Pelanggan</h5>
+          <h5 class="modal-title fw-bold">Struk Belanja Pelanggan</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body p-3 bg-light" id="thermal-receipt-preview">
@@ -406,7 +404,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
           <button type="button" class="btn btn-primary fw-bold" onclick="printReceipt()">
-            <i class="bi bi-printer me-1"></i> Cetak Struk (Thermal)
+            Cetak Struk (Thermal)
           </button>
         </div>
       </div>

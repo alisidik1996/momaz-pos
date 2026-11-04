@@ -79,8 +79,7 @@
       <!-- Wizard Header -->
       <div class="card-header bg-dark text-white p-4 text-center">
         <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-2" style="width: 56px; height: 56px;">
-          <i class="bi bi-shop fs-2"></i>
-        </div>
+          </div>
         <h4 class="fw-bold mb-1">SETUP TOKO RETAIL PAKAIAN</h4>
         <p class="text-white-50 small mb-0">Inisialisasi database tenant toko pakaian untuk admin: <strong>{% if user %}{{ user.sub }}{% else %}Admin{% endif %}</strong></p>
       </div>
@@ -109,7 +108,7 @@
         <form id="wizard-form">
           <!-- ================= STEP 1: PROFIL TOKO ================= -->
           <div class="wizard-step" id="step-1">
-            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-shop me-2"></i> Langkah 1: Identitas Toko & Kode Tenant</h5>
+            <h5 class="fw-bold text-primary mb-3">Langkah 1: Identitas Toko & Kode Tenant</h5>
             <p class="text-muted small mb-4">Setiap toko memiliki database mandiri yang aman dan terisolasi.</p>
 
             <div class="row g-3 mb-3">
@@ -120,7 +119,7 @@
               <div class="col-md-5">
                 <label class="form-label small fw-semibold">Kode / Slug Tenant</label>
                 <div class="input-group">
-                  <span class="input-group-text small"><i class="bi bi-database"></i></span>
+                  <span class="input-group-text small"></span>
                   <input type="text" id="store-slug" class="form-control" placeholder="momaz-apparel" required>
                 </div>
                 <small class="text-muted" style="font-size:0.75rem;">Nama file database: <code>tenants/[slug].db</code></small>
@@ -145,14 +144,13 @@
 
             <div class="text-end">
               <button type="button" class="btn btn-primary px-4 fw-bold" onclick="goToStep(2)">
-                Lanjut ke Kebijakan Struk <i class="bi bi-arrow-right ms-1"></i>
-              </button>
+                Lanjut ke Kebijakan Struk </button>
             </div>
           </div>
 
           <!-- ================= STEP 2: KEBIJAKAN STRUK & PPN ================= -->
           <div class="wizard-step" id="step-2" style="display: none;">
-            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-receipt me-2"></i> Langkah 2: Kebijakan Retur Baju & Pajak PPN</h5>
+            <h5 class="fw-bold text-primary mb-3">Langkah 2: Kebijakan Retur Baju & Pajak PPN</h5>
             <p class="text-muted small mb-4">Pengaturan ini akan diterapkan pada antarmuka kasir dan pencetakan struk thermal.</p>
 
             <div class="row g-3 mb-3">
@@ -180,28 +178,27 @@
 
             <div class="d-flex justify-content-between">
               <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(1)">
-                <i class="bi bi-arrow-left me-1"></i> Kembali
+                Kembali
               </button>
               <button type="button" class="btn btn-primary px-4 fw-bold" onclick="goToStep(3)">
-                Lanjut ke Kategori & Brand <i class="bi bi-arrow-right ms-1"></i>
-              </button>
+                Lanjut ke Kategori & Brand </button>
             </div>
           </div>
 
           <!-- ================= STEP 3: KATEGORI & BRAND ================= -->
           <div class="wizard-step" id="step-3" style="display: none;">
-            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-tags me-2"></i> Langkah 3: Setup Kategori & Brand Pakaian Awal</h5>
+            <h5 class="fw-bold text-primary mb-3">Langkah 3: Setup Kategori & Brand Pakaian Awal</h5>
             <p class="text-muted small mb-3">Pilih kategori umum toko Anda atau tambahkan kategori baru sesuai kebutuhan retail Anda. Anda juga dapat mengelola kategori nanti di Backoffice.</p>
 
             <!-- Form Tambah Kategori Baru -->
             <div class="card bg-light border-0 mb-4 p-3 rounded-3 shadow-sm">
               <label class="form-label fw-bold small text-dark mb-1" for="custom-cat-input">
-                <i class="bi bi-plus-circle text-primary me-1"></i> Tambah Kategori Baru:
+                Tambah Kategori Baru:
               </label>
               <div class="input-group">
                 <input type="text" id="custom-cat-input" class="form-control" placeholder="Ketik nama kategori (Contoh: Baju Anak, Batik & Kebaya, Sepatu)" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); addNewCategory(); }">
                 <button type="button" class="btn btn-primary fw-semibold px-3" onclick="addNewCategory()">
-                  <i class="bi bi-plus-lg me-1"></i> Tambah
+                  Tambah
                 </button>
               </div>
               <small class="text-muted mt-1" style="font-size: 0.78rem;">Ketik nama kategori lalu tekan Enter atau klik tombol Tambah.</small>
@@ -274,17 +271,16 @@
 
             <div class="d-flex justify-content-between">
               <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(2)">
-                <i class="bi bi-arrow-left me-1"></i> Kembali
+                Kembali
               </button>
               <button type="button" class="btn btn-primary px-4 fw-bold" onclick="goToStep(4)">
-                Lanjut ke Konfirmasi <i class="bi bi-arrow-right ms-1"></i>
-              </button>
+                Lanjut ke Konfirmasi </button>
             </div>
           </div>
 
           <!-- ================= STEP 4: KONFIRMASI ================= -->
           <div class="wizard-step" id="step-4" style="display: none;">
-            <h5 class="fw-bold text-success mb-3"><i class="bi bi-check-circle me-2"></i> Langkah 4: Konfirmasi & Inisialisasi Database Tenant</h5>
+            <h5 class="fw-bold text-success mb-3">Langkah 4: Konfirmasi & Inisialisasi Database Tenant</h5>
             <p class="text-muted small mb-4">Sistem akan membuat database SQLite mandiri untuk toko retail pakaian Anda.</p>
 
             <div class="p-3 bg-light rounded border mb-4">
@@ -307,7 +303,6 @@
             </div>
 
             <div class="alert alert-info small d-flex align-items-center mb-4">
-              <i class="bi bi-info-circle-fill fs-4 me-3 text-primary"></i>
               <div>
                 Database toko ini akan tersimpan permanen. Anda dapat langsung mengelola produk, varian ukuran/warna, dan kasir POS tanpa pernah kembali ke setup wizard lagi.
               </div>
@@ -315,10 +310,10 @@
 
             <div class="d-flex justify-content-between">
               <button type="button" class="btn btn-outline-secondary px-4" onclick="goToStep(3)">
-                <i class="bi bi-arrow-left me-1"></i> Kembali
+                Kembali
               </button>
               <button type="button" id="btn-submit-init" class="btn btn-success px-5 fw-bold py-2" onclick="submitInitialization()">
-                <i class="bi bi-rocket-takeoff me-2"></i> Buat Database Toko Sekarang
+                Buat Database Toko Sekarang
               </button>
             </div>
           </div>
@@ -388,7 +383,7 @@
       delBtn.type = "button";
       delBtn.className = "btn btn-sm btn-link text-danger p-0 ms-1 flex-shrink-0";
       delBtn.title = "Hapus kategori ini";
-      delBtn.innerHTML = '<i class="bi bi-x-circle fs-6"></i>';
+      delBtn.innerHTML = '';
       delBtn.onclick = function() { removeCategory(id); };
 
       card.appendChild(left);
@@ -498,7 +493,7 @@
         posSound.error();
         showToast(err.message, "error");
         btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-rocket-takeoff me-2"></i> Buat Database Toko Sekarang`;
+        btn.innerHTML = `Buat Database Toko Sekarang`;
       }
     }
   </script>
