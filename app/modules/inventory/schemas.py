@@ -1,8 +1,9 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
+from app.core.validation import ItemReference, Money, PositiveQuantity, StockQuantity, UTCResponse
 
-class StockMovementOut(BaseModel):
+class StockMovementOut(UTCResponse):
     id: int
     product_id: Optional[int] = None
     variant_id: Optional[int] = None
@@ -19,24 +20,20 @@ class StockMovementOut(BaseModel):
     user_name: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
-class StockAdjustmentRequest(BaseModel):
-    product_id: Optional[int] = None
-    variant_id: Optional[int] = None
-    actual_stock: int
+class StockAdjustmentRequest(ItemReference):
+    actual_stock: StockQuantity
     reason: str  # 'damaged', 'lost', 'physical_count', 'other'
     note: Optional[str] = None
 
-class StockInItem(BaseModel):
-    product_id: Optional[int] = None
-    variant_id: Optional[int] = None
-    quantity: int
-    cost_price: Optional[float] = None
+class StockInItem(ItemReference):
+    quantity: PositiveQuantity
+    cost_price: Optional[Money] = None
 
 class StockInRequest(BaseModel):
     supplier_name: Optional[str] = None
     invoice_ref: Optional[str] = None
     note: Optional[str] = None
-    items: List[StockInItem]
+    items: List[StockInItem] = Field(min_length=1)
 
 class LowStockItemOut(BaseModel):
     product_id: int

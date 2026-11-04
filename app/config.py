@@ -1,4 +1,5 @@
 import os
+import secrets
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,8 +47,13 @@ class Settings:
     BLOB_READ_WRITE_TOKEN: str = os.getenv("BLOB_READ_WRITE_TOKEN", "").strip()
     BLOB_STORE_ID: str = os.getenv("BLOB_STORE_ID", "").strip()
     
-    # Security
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "super-secret-momaz-pos-multi-tenant-key-2026")
+    # Security: production requires an explicit key; local keys are process-local.
+    IS_VERCEL: bool = os.getenv("VERCEL", "").strip().lower() in {"1", "true", "yes", "on"}
+    IS_PRODUCTION: bool = IS_VERCEL or os.getenv("PRODUCTION", "").strip().lower() in {"1", "true", "yes", "on"}
+    configured_secret: str = os.getenv("SECRET_KEY", "").strip()
+    if IS_PRODUCTION and (len(configured_secret.encode("utf-8")) < 32 or configured_secret.startswith("super-secret-momaz-pos-")):
+        raise RuntimeError("SECRET_KEY produksi wajib diisi dengan kunci acak minimal 32 byte.")
+    SECRET_KEY: str = configured_secret or secrets.token_urlsafe(48)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
@@ -55,18 +61,3 @@ class Settings:
     SQLITE_SYNCHRONOUS: str = os.getenv("SQLITE_SYNCHRONOUS", "NORMAL")  # NORMAL, FULL, or OFF
 
 settings = Settings()
-
-# Validate SECRET_KEY in production
-if settings.SECRET_KEY == "super-secret-momaz-pos-multi-tenant-key-2026":
-    is_production = os.getenv("VERCEL") or os.getenv("PRODUCTION")
-    if is_production:
-        raise RuntimeError(
-            "SECURITY ERROR: Default SECRET_KEY detected in production. "
-            "Set SECRET_KEY environment variable immediately."
-        )
-
-if not settings.DATABASE_URL:
-    try:
-        settings.TENANTS_DIR.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        pass

@@ -6,7 +6,7 @@ root_dir = Path(__file__).resolve().parent.parent
 if str(root_dir) not in sys.path:
     sys.path.insert(0, str(root_dir))
 
-from app.main import app
+from app.main import app  # noqa: E402 - repository path must be configured first
 
 # Export ASGI app instance for Vercel Serverless Functions
 app = app

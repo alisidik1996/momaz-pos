@@ -16,7 +16,7 @@ def create_return(
     current_user: User = Depends(get_current_user)
 ):
     ret = service.process_return_exchange(db, req, cashier_id=current_user.id)
-    history = service.get_return_orders(db, limit=1)
+    history = service.get_return_orders(db, limit=1, return_id=ret.id)
     return history[0]
 
 @router.get("", response_model=List[ReturnOrderOut])

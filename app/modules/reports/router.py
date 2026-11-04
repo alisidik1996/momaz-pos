@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, Query, Response
+from datetime import date
 from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any
+from typing import Optional
 from app.database import get_db
 from app.modules.auth.service import get_current_user, require_admin
 from app.modules.auth.models import User
 from app.modules.reports import service
+from app.modules.reports.schemas import StoreSettingsUpdate
 
 router = APIRouter(prefix="/api", tags=["Reports, Analytics & Settings"])
 
@@ -14,8 +16,8 @@ def get_dashboard(db: Session = Depends(get_db), _: User = Depends(get_current_u
 
 @router.get("/reports/sales")
 def get_sales_report(
-    start_date: Optional[str] = Query(None, description="Format: YYYY-MM-DD"),
-    end_date: Optional[str] = Query(None, description="Format: YYYY-MM-DD"),
+    start_date: Optional[date] = Query(None, description="Format: YYYY-MM-DD"),
+    end_date: Optional[date] = Query(None, description="Format: YYYY-MM-DD"),
     cashier_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(require_admin)
@@ -48,8 +50,8 @@ def get_sales_report(
 
 @router.get("/reports/sales/csv")
 def export_sales_csv(
-    start_date: Optional[str] = Query(None),
-    end_date: Optional[str] = Query(None),
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(require_admin)
 ):
@@ -79,9 +81,9 @@ def get_settings(db: Session = Depends(get_db)):
 
 @router.put("/settings")
 def update_settings(
-    data: Dict[str, Any],
+    data: StoreSettingsUpdate,
     db: Session = Depends(get_db),
     _: User = Depends(require_admin)
 ):
-    s = service.update_store_settings(db, data)
+    service.update_store_settings(db, data.model_dump(exclude_unset=True, exclude_none=True))
     return {"message": "Pengaturan toko berhasil diperbarui."}

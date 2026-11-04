@@ -1,8 +1,9 @@
-import random
-from datetime import datetime, timezone
 from typing import List, Optional
+import math
+from sqlalchemy import update, func
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
+from app.core.transactions import generate_document_number, transactional
 from app.modules.sales.models import SalesOrder, SalesOrderItem
 from app.modules.catalog.models import Product, ProductVariant
 from app.modules.shifts.models import CashierShift
@@ -15,21 +16,27 @@ from app.modules.sales.schemas import (
 )
 
 def generate_invoice_number(db: Session) -> str:
-    today_str = datetime.now().strftime("%Y%m%d")
-    count_today = db.query(SalesOrder).filter(
-        SalesOrder.invoice_number.like(f"INV-{today_str}-%")
-    ).count()
-    seq = str(count_today + 1).zfill(4)
-    return f"INV-{today_str}-{seq}"
+    return generate_document_number(db, SalesOrder.invoice_number, "INV")
 
+@transactional
 def process_checkout(db: Session, req: CheckoutRequest, cashier_id: int) -> SalesOrder:
     if not req.items:
         raise HTTPException(status_code=400, detail="Keranjang belanja kosong.")
+    store = db.query(StoreSettings).first()
+    expected_tax_rate = (store.tax_rate or 0) if store and store.is_tax_enabled else 0
+    if not math.isclose(req.tax_rate, expected_tax_rate, rel_tol=0, abs_tol=0.000001):
+        raise HTTPException(status_code=409, detail="Tarif pajak berubah. Muat ulang pengaturan toko sebelum membayar.")
         
     # Check or assign active cashier shift
     shift = None
     if req.shift_id:
-        shift = db.query(CashierShift).filter(CashierShift.id == req.shift_id, CashierShift.status == "open").first()
+        shift = db.query(CashierShift).filter(CashierShift.id == req.shift_id).populate_existing().first()
+        if not shift:
+            raise HTTPException(status_code=404, detail="Shift tidak ditemukan.")
+        if shift.user_id != cashier_id:
+            raise HTTPException(status_code=403, detail="Shift bukan milik kasir yang sedang login.")
+        if shift.status != "open":
+            raise HTTPException(status_code=400, detail="Shift sudah ditutup.")
     if not shift:
         shift = get_active_shift(db, cashier_id)
         
@@ -40,13 +47,18 @@ def process_checkout(db: Session, req: CheckoutRequest, cashier_id: int) -> Sale
     items_subtotal = 0.0
     
     for item_in in req.items:
-        line_subtotal = (item_in.unit_price * item_in.quantity) - item_in.discount_amount
+        line_subtotal = round((item_in.unit_price * item_in.quantity) - item_in.discount_amount, 2)
         items_subtotal += line_subtotal
         
-        if item_in.product_id:
+        if item_in.product_id and not item_in.variant_id:
             prod = db.query(Product).filter(Product.id == item_in.product_id).first()
             if not prod:
                 raise HTTPException(status_code=404, detail=f"Produk #{item_in.product_id} tidak ditemukan.")
+            if not prod.is_active:
+                raise HTTPException(status_code=400, detail="Produk tidak aktif.")
+            expected_price = prod.discount_price if prod.discount_price and prod.discount_price > 0 else prod.base_price
+            if not math.isclose(item_in.unit_price, expected_price or 0, rel_tol=0, abs_tol=0.000001):
+                raise HTTPException(status_code=409, detail="Harga produk berubah. Muat ulang katalog sebelum membayar.")
             if (prod.stock or 0) < item_in.quantity:
                 raise HTTPException(
                     status_code=400,
@@ -72,6 +84,12 @@ def process_checkout(db: Session, req: CheckoutRequest, cashier_id: int) -> Sale
             ).filter(ProductVariant.id == item_in.variant_id).first()
             if not var:
                 raise HTTPException(status_code=404, detail=f"Varian #{item_in.variant_id} tidak ditemukan.")
+            if item_in.product_id is not None and var.product_id != item_in.product_id:
+                raise HTTPException(status_code=400, detail="Varian bukan milik produk yang dipilih.")
+            if not var.is_active or not var.product.is_active:
+                raise HTTPException(status_code=400, detail="Produk atau varian tidak aktif.")
+            if not math.isclose(item_in.unit_price, var.sell_price or 0, rel_tol=0, abs_tol=0.000001):
+                raise HTTPException(status_code=409, detail="Harga varian berubah. Muat ulang katalog sebelum membayar.")
             if var.stock < item_in.quantity:
                 raise HTTPException(
                     status_code=400,
@@ -95,12 +113,15 @@ def process_checkout(db: Session, req: CheckoutRequest, cashier_id: int) -> Sale
             raise HTTPException(status_code=400, detail="Item belanja harus menyertakan product_id.")
         
     # Tax and Total
-    subtotal_after_discount = max(0.0, items_subtotal - req.discount_amount)
+    items_subtotal = round(items_subtotal, 2)
+    subtotal_after_discount = round(max(0.0, items_subtotal - req.discount_amount), 2)
     tax_amount = 0.0
     if req.tax_rate > 0:
         tax_amount = round(subtotal_after_discount * (req.tax_rate / 100.0), 2)
         
-    total_amount = subtotal_after_discount + tax_amount
+    total_amount = round(subtotal_after_discount + tax_amount, 2)
+    if req.customer_id and not db.get(Customer, req.customer_id):
+        raise HTTPException(status_code=404, detail="Pelanggan tidak ditemukan.")
     
     if req.amount_paid < total_amount:
         raise HTTPException(
@@ -108,7 +129,7 @@ def process_checkout(db: Session, req: CheckoutRequest, cashier_id: int) -> Sale
             detail=f"Jumlah pembayaran (Rp {req.amount_paid:,.0f}) kurang dari total tagihan (Rp {total_amount:,.0f})."
         )
         
-    change_amount = req.amount_paid - total_amount
+    change_amount = round(req.amount_paid - total_amount, 2)
     
     order = SalesOrder(
         invoice_number=invoice_no,
@@ -159,13 +180,16 @@ def process_checkout(db: Session, req: CheckoutRequest, cashier_id: int) -> Sale
             shift.total_sales_cash += total_amount
         else:
             shift.total_sales_non_cash += total_amount
+        shift.ending_cash_expected = shift.starting_cash + shift.total_sales_cash - shift.total_refunds
             
     # Update Customer spend, visits & calculate affiliate commission
     if req.customer_id:
         cust = db.query(Customer).filter(Customer.id == req.customer_id).first()
         if cust:
-            cust.total_spend += total_amount
-            cust.visit_count += 1
+            db.execute(update(Customer).where(Customer.id == cust.id).values(
+                total_spend=func.coalesce(Customer.total_spend, 0) + total_amount,
+                visit_count=func.coalesce(Customer.visit_count, 0) + 1,
+            ))
 
             total_comm = 0.0
             for oi, prod, var in order_items:
@@ -177,10 +201,17 @@ def process_checkout(db: Session, req: CheckoutRequest, cashier_id: int) -> Sale
                         comm = round((oi.subtotal * (comm_val / 100.0)), 2)
                     else:
                         comm = round(comm_val * oi.quantity, 2)
+                    if not math.isfinite(comm):
+                        raise HTTPException(status_code=400, detail="Nilai komisi tidak valid.")
+                    oi.affiliate_commission_amount = comm
                     total_comm += comm
 
             if total_comm > 0:
-                cust.total_commission = (cust.total_commission or 0.0) + total_comm
+                if not math.isfinite(total_comm):
+                    raise HTTPException(status_code=400, detail="Total komisi tidak valid.")
+                db.execute(update(Customer).where(Customer.id == cust.id).values(
+                    total_commission=func.coalesce(Customer.total_commission, 0) + total_comm,
+                ))
                 from app.modules.customers.models import AffiliateCommission
                 comm_record = AffiliateCommission(
                     customer_id=cust.id,
@@ -231,6 +262,7 @@ def build_receipt_data(db: Session, order: SalesOrder) -> ReceiptOut:
     items_out = [SalesOrderItemOut.model_validate(item) for item in order.items]
     
     return ReceiptOut(
+        created_at=order.created_at,
         invoice_number=order.invoice_number,
         store_name=settings.store_name,
         store_tagline=settings.tagline,

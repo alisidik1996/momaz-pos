@@ -118,8 +118,7 @@
     if (!inv) return;
 
     try {
-      const orders = await api.get(`/api/sales/orders?limit=100`);
-      targetOrder = orders.find(o => o.invoice_number === inv);
+      targetOrder = await api.get(`/api/sales/orders/by-invoice/${encodeURIComponent(inv)}`);
       if (!targetOrder) {
         showToast("Invoice tidak ditemukan.", "error");
         return;
@@ -131,9 +130,9 @@
       const itemsContainer = document.getElementById("lookup-items-selection");
       itemsContainer.innerHTML = targetOrder.items.map(it => `
         <div class="form-check p-2 border rounded mb-1 bg-white">
-          <input class="form-check-input ms-0 me-2" type="checkbox" data-pid="${it.product_id || ''}" data-vid="${it.variant_id || ''}" data-price="${it.unit_price}" id="chk-item-${it.id}" checked>
+          <input class="form-check-input ms-0 me-2" type="checkbox" data-pid="${it.product_id || ''}" data-vid="${it.variant_id || ''}" data-price="${targetOrder.subtotal > 0 ? roundMoney((it.subtotal / it.quantity) * (targetOrder.total_amount / targetOrder.subtotal)) : 0}" id="chk-item-${it.id}" checked>
           <label class="form-check-label fw-semibold" for="chk-item-${it.id}">
-            ${it.product_name}${it.variant_info ? ` (${it.variant_info})` : ''} - ${formatRupiah(it.unit_price)} x ${it.quantity}
+            ${escapeHTML(it.product_name)}${it.variant_info ? ` (${escapeHTML(it.variant_info)})` : ''} - ${formatRupiah(it.unit_price)} x ${it.quantity}
           </label>
         </div>
       `).join("");

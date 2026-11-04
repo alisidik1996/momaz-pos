@@ -1,19 +1,20 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, Field
 from typing import Optional, List
+from app.core.validation import Name, Username, Password, Money
 
 class AdminSetupInput(BaseModel):
-    full_name: str
-    username: str
-    password: str
+    full_name: Name
+    username: Username
+    password: Password
 
 class StoreSetupInput(BaseModel):
-    store_name: str
+    store_name: Name
     tagline: Optional[str] = "Fashion & Apparel Distro"
     address: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
-    return_policy_days: int = 3
-    tax_rate: float = 0.0
+    return_policy_days: int = Field(default=3, ge=0)
+    tax_rate: Money = Field(default=0.0, le=100)
     is_tax_enabled: bool = False
     receipt_footer: Optional[str] = None
 

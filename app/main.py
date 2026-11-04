@@ -1,14 +1,13 @@
-import os
+import logging
 from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request, Depends, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app.config import settings
-from app.database import master_engine, MasterBase, extract_token_from_string, _get_master_unpooled_engine
-from app.core.security import decode_access_token
+from app.database import master_engine, MasterBase, get_request_identity, _get_master_unpooled_engine
 
 # Import Routers
 from app.modules.tenants.router import router as tenants_router
@@ -20,6 +19,12 @@ from app.modules.shifts.router import router as shifts_router
 from app.modules.sales.router import router as sales_router
 from app.modules.returns.router import router as returns_router
 from app.modules.reports.router import router as reports_router
+try:
+    from app.modules.monitoring.router import router as monitoring_router
+except ModuleNotFoundError as exc:
+    if exc.name not in {"app.modules.monitoring", "app.modules.monitoring.router"}:
+        raise
+    monitoring_router = None
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -41,6 +46,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+@app.middleware("http")
+async def protect_cookie_mutations(request: Request, call_next):
+    if request.method not in {"GET", "HEAD", "OPTIONS"} and request.cookies.get("access_token"):
+        origin = request.headers.get("Origin")
+        if origin and origin.rstrip("/").lower() != str(request.base_url).rstrip("/").lower():
+            if not request.headers.get("Authorization"):
+                return JSONResponse(status_code=403, content={"detail": "Asal permintaan tidak diizinkan."})
+    return await call_next(request)
+
 # Static & Templates
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -55,23 +69,24 @@ app.include_router(shifts_router)
 app.include_router(sales_router)
 app.include_router(returns_router)
 app.include_router(reports_router)
+if monitoring_router is not None:
+    app.include_router(monitoring_router)
 
 # Helper to inspect user from cookie
 def get_user_from_cookie(request: Request):
-    from app.core.security import TokenExpiredError, TokenInvalidError
-
-    token = extract_token_from_string(request.cookies.get("access_token"))
-    if not token:
-        token = extract_token_from_string(request.headers.get("Authorization"))
-    if not token:
-        return None
-
     try:
-        return decode_access_token(token)
-    except (TokenExpiredError, TokenInvalidError):
-        # Token invalid (old SECRET_KEY or expired) - return None for graceful redirect
-        return None
-    except Exception:
+        identity = get_request_identity(request).copy()
+        if identity["tenant_slug"]:
+            from app.database import TenantManager
+            from app.modules.auth.service import get_user_by_username
+
+            with TenantManager.get_session(identity["tenant_slug"]) as db:
+                user = get_user_by_username(db, identity["sub"])
+                if user is None or not user.is_active:
+                    return None
+                identity["role"] = user.role
+        return identity
+    except HTTPException:
         return None
 
 def get_template_context(request: Request, extra: dict = None) -> dict:
@@ -102,7 +117,7 @@ def get_template_context(request: Request, extra: dict = None) -> dict:
                 finally:
                     db.close()
             except Exception:
-                pass
+                logging.getLogger(__name__).warning("Store name could not be loaded for page context")
 
     ctx["store_name"] = store_name
     return ctx
@@ -260,4 +275,15 @@ def backoffice_users(request: Request):
         return check
     return templates.TemplateResponse(request=request, name="backoffice/users.html", context=get_template_context(request, {
         "active_page": "users"
+    }))
+
+@app.get("/backoffice/monitoring", response_class=HTMLResponse)
+def backoffice_monitoring(request: Request):
+    check = check_backoffice_access(request)
+    if check:
+        return check
+    if monitoring_router is None or not (BASE_DIR / "templates" / "backoffice" / "monitoring.html").is_file():
+        raise HTTPException(status_code=404, detail="Modul monitoring belum tersedia.")
+    return templates.TemplateResponse(request=request, name="backoffice/monitoring.html", context=get_template_context(request, {
+        "active_page": "monitoring"
     }))

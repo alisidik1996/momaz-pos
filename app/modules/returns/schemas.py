@@ -1,19 +1,18 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional, List
 from datetime import datetime
+from app.core.validation import ItemReference, Money, PositiveId, PositiveQuantity, UTCResponse
 
-class ReturnItemRequest(BaseModel):
-    product_id: Optional[int] = None
-    variant_id: Optional[int] = None
-    quantity: int = 1
-    refund_subtotal: float
+class ReturnItemRequest(ItemReference):
+    quantity: PositiveQuantity = 1
+    refund_subtotal: Money
 
 class ReturnCreateRequest(BaseModel):
-    order_id: int
+    order_id: PositiveId
     reason: str = "wrong_size"
-    items: List[ReturnItemRequest]
-    exchange_product_id: Optional[int] = None
-    exchange_variant_id: Optional[int] = None
+    items: List[ReturnItemRequest] = Field(min_length=1)
+    exchange_product_id: Optional[PositiveId] = None
+    exchange_variant_id: Optional[PositiveId] = None
     notes: Optional[str] = None
 
 class ReturnItemOut(BaseModel):
@@ -27,7 +26,7 @@ class ReturnItemOut(BaseModel):
     sku: Optional[str] = None
     model_config = ConfigDict(from_attributes=True)
 
-class ReturnOrderOut(BaseModel):
+class ReturnOrderOut(UTCResponse):
     id: int
     return_number: str
     order_id: int

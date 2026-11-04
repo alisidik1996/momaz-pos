@@ -1,9 +1,8 @@
-import shutil
-import uuid
 from pathlib import Path
 from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 from typing import List, Optional
 from app.database import get_db
 from app.modules.auth.service import get_current_user, require_admin
@@ -18,7 +17,7 @@ from app.modules.catalog.schemas import (
 )
 from app.modules.catalog import service
 
-from app.core.storage import upload_file_to_blob_or_local
+from app.core.storage import upload_file_to_blob_or_local, read_bounded_upload, MAX_CSV_BYTES
 
 router = APIRouter(prefix="/api/catalog", tags=["Catalog (Clothing, Variants, Barcodes)"])
 
@@ -29,7 +28,7 @@ async def upload_product_image(
     _: User = Depends(require_admin)
 ):
     allowed_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
-    ext = Path(file.filename).suffix.lower()
+    ext = Path(file.filename or "").suffix.lower()
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="Format file tidak didukung. Harap upload gambar (PNG, JPG, WEBP).")
 
@@ -61,11 +60,11 @@ async def import_products_csv(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin)
 ):
-    if not file.filename.lower().endswith((".csv", ".txt")):
+    if not (file.filename or "").lower().endswith((".csv", ".txt")):
         raise HTTPException(status_code=400, detail="Hanya file CSV (.csv) yang didukung untuk impor massal.")
     
-    content = await file.read()
-    return service.import_products_from_csv(db, content)
+    content = await read_bounded_upload(file, MAX_CSV_BYTES)
+    return await run_in_threadpool(service.import_products_from_csv, db, content)
 
 # Categories & Brands
 @router.get("/categories", response_model=List[CategoryOut])

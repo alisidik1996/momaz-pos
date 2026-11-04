@@ -1,18 +1,18 @@
-from app.database import engine, Base
-# Import all models so metadata knows all tables
-import app.core.models
-import app.modules.auth.models
-import app.modules.catalog.models
-import app.modules.inventory.models
-import app.modules.customers.models
-import app.modules.shifts.models
-import app.modules.sales.models
-import app.modules.returns.models
+"""Initialize the multi-tenant schema without inserting sample accounts."""
+from importlib import import_module
+from typing import Optional
 
-def seed_database():
-    """Ensure database schema and tables exist in SQLite without injecting mock data."""
-    Base.metadata.create_all(bind=engine)
+from app.database import MasterBase, TenantManager, master_engine, _get_master_unpooled_engine, is_postgres
+
+
+def seed_database(tenant_slug: Optional[str] = None):
+    for module in ("app.core.models", "app.modules.tenants.models", "app.modules.auth.models", "app.modules.catalog.models", "app.modules.inventory.models", "app.modules.customers.models", "app.modules.shifts.models", "app.modules.sales.models", "app.modules.returns.models"):
+        import_module(module)
+    MasterBase.metadata.create_all(bind=_get_master_unpooled_engine() if is_postgres else master_engine)
+    if tenant_slug is not None:
+        TenantManager.init_tenant_db(tenant_slug)
+
 
 if __name__ == "__main__":
     seed_database()
-    print("[OK] Database schema initialized (no mock seeds). Ready for Setup Wizard.")
+    print("[OK] Master schema initialized. Ready for tenant registration and setup.")

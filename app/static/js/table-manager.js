@@ -68,7 +68,7 @@ class TableManager {
           <div class="dt-search-wrapper" style="max-width: 280px; width: 100%;">
             <div class="input-group input-group-sm">
               <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-              <input type="text" class="form-control form-control-sm dt-search-input" placeholder="${this.options.searchPlaceholder}">
+              <input type="text" class="form-control form-control-sm dt-search-input" placeholder="${escapeHTML(this.options.searchPlaceholder)}">
               <button class="btn btn-outline-secondary dt-search-clear" type="button" style="display:none;" title="Bersihkan pencarian">
                 <i class="bi bi-x"></i>
               </button>
@@ -381,7 +381,7 @@ class TableManager {
         if (this.rawRows.length === 0) {
           infoEl.innerText = "Belum ada data tersedia";
         } else {
-          infoEl.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Tidak ada data yang cocok dengan pencarian "${this.searchQuery}"</span>`;
+          infoEl.innerHTML = `<span class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Tidak ada data yang cocok dengan pencarian "${escapeHTML(this.searchQuery)}"</span>`;
         }
       } else {
         let infoStr = `Menampilkan <strong>${startIndex + 1}</strong> sampai <strong>${endIndex}</strong> dari <strong>${totalItems}</strong> data`;

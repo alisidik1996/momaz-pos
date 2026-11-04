@@ -1,31 +1,39 @@
 // Momaz POS Central API Client & Utilities
 
+function escapeHTML(value) {
+  const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  return String(value ?? "").replace(/[&<>"']/g, character => entities[character]);
+}
+
+function jsonForAttribute(value) {
+  return escapeHTML(JSON.stringify(value));
+}
+
+function safeImageUrl(value) {
+  if (!value) return "";
+  if (/^data:image\/(png|jpeg|gif|webp);base64,[a-z0-9+/=\s]+$/i.test(value)) return value;
+  try {
+    const url = new URL(value, window.location.origin);
+    return ["http:", "https:"].includes(url.protocol) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
+function roundMoney(value) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
 const api = {
-  getToken() {
-    const match = document.cookie.match(new RegExp('(^| )access_token=([^;]+)'));
-    if (match) {
-      let val = decodeURIComponent(match[2]).trim().replace(/^["']|["']$/g, '');
-      while (val.toLowerCase().startsWith("bearer ")) {
-        val = val.substring(7).trim().replace(/^["']|["']$/g, '');
-      }
-      return val ? "Bearer " + val : null;
-    }
-    return null;
-  },
-
   async request(url, options = {}) {
-    const headers = options.headers || {};
-    if (!(options.body instanceof FormData)) {
-      headers["Content-Type"] = "application/json";
-    }
-
-    const token = this.getToken();
-    if (token && !headers["Authorization"]) {
-      headers["Authorization"] = token;
+    const headers = new Headers(options.headers || {});
+    if (options.body != null && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
     }
 
     try {
       const response = await fetch(url, {
+        credentials: "same-origin",
         ...options,
         headers,
       });
@@ -46,7 +54,8 @@ const api = {
       }
 
       if (!response.ok) {
-        const errorMsg = (data && data.detail) ? data.detail : "Terjadi kesalahan pada sistem.";
+        const detail = data && data.detail;
+        const errorMsg = Array.isArray(detail) ? detail.map(item => item.msg).join("; ") : detail || "Terjadi kesalahan pada sistem.";
         throw new Error(errorMsg);
       }
 
@@ -124,7 +133,7 @@ function showToast(message, type = "info") {
   toastEl.innerHTML = `
     <div class="d-flex">
       <div class="toast-body fw-medium py-2 px-3">
-        ${message}
+        ${escapeHTML(message)}
       </div>
       <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.parentElement.parentElement.remove()"></button>
     </div>

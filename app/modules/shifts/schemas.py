@@ -1,16 +1,17 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
+from app.core.validation import Money, UTCResponse
 
 class ShiftOpenRequest(BaseModel):
-    starting_cash: float
+    starting_cash: Money
     note: Optional[str] = None
 
 class ShiftCloseRequest(BaseModel):
-    ending_cash_actual: float
+    ending_cash_actual: Money
     note: Optional[str] = None
 
-class ShiftOut(BaseModel):
+class ShiftOut(UTCResponse):
     id: int
     user_id: int
     start_time: datetime

@@ -18,7 +18,7 @@ async function loadDashboard() {
       } else {
         pContainer.innerHTML = Object.entries(data.payment_breakdown).map(([method, val]) => `
           <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
-            <span class="text-uppercase fw-bold">${method}</span>
+            <span class="text-uppercase fw-bold">${escapeHTML(method)}</span>
             <span class="fw-bold text-primary">${formatRupiah(val)}</span>
           </div>
         `).join("");
@@ -35,7 +35,7 @@ async function loadDashboard() {
           <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
             <div>
               <span class="badge bg-secondary me-2">#${idx + 1}</span>
-              <span class="fw-medium">${it.name}</span>
+              <span class="fw-medium">${escapeHTML(it.name)}</span>
             </div>
             <div>
               <span class="badge bg-primary me-2">${it.qty_sold} pcs</span>
@@ -73,7 +73,7 @@ async function loadBackofficeProducts() {
       const stockBadge = stock <= 0 ? "bg-danger" : (stock <= minStock ? "bg-warning text-dark" : "bg-success");
 
       const photoHtml = p.image_url
-        ? `<img src="${p.image_url}" class="rounded border shadow-sm" style="width: 48px; height: 48px; object-fit: cover;" alt="${p.name}">`
+        ? `<img src="${escapeHTML(safeImageUrl(p.image_url))}" class="rounded border shadow-sm" style="width: 48px; height: 48px; object-fit: cover;" alt="${escapeHTML(p.name)}">`
         : `<div class="bg-light border rounded text-center text-muted d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;"><i class="bi bi-box-seam text-secondary fs-5"></i></div>`;
 
       let priceHtml = `<span class="fw-bold text-dark">${formatRupiah(p.base_price)}</span>`;
@@ -88,14 +88,14 @@ async function loadBackofficeProducts() {
         <tr>
           <td>${photoHtml}</td>
           <td>
-            <div class="fw-bold">${p.name}</div>
+            <div class="fw-bold">${escapeHTML(p.name)}</div>
             ${p.discount_price > 0 ? '<span class="badge bg-danger-subtle text-danger" style="font-size:0.7rem;">PROMO</span>' : ''}
           </td>
-          <td><code>${p.sku || '-'}</code></td>
-          <td><code>${p.barcode || '-'}</code></td>
+          <td><code>${escapeHTML(p.sku || '-')}</code></td>
+          <td><code>${escapeHTML(p.barcode || '-')}</code></td>
           <td>
-            <span class="badge bg-light text-dark border">${catName}</span>
-            <small class="text-muted d-block mt-1">${brandName}</small>
+            <span class="badge bg-light text-dark border">${escapeHTML(catName)}</span>
+            <small class="text-muted d-block mt-1">${escapeHTML(brandName)}</small>
           </td>
           <td>${formatRupiah(p.cost_price || 0)}</td>
           <td>${priceHtml}</td>
@@ -152,10 +152,10 @@ async function loadInventoryData() {
       } else {
         lowTbody.innerHTML = lowStock.map(it => `
           <tr>
-            <td class="fw-bold">${it.product_name}</td>
-            <td><span class="badge bg-light text-dark border">${it.category_name || '-'}</span></td>
-            <td><code>${it.sku || '-'}</code></td>
-            <td><small class="text-muted">${it.barcode || '-'}</small></td>
+            <td class="fw-bold">${escapeHTML(it.product_name)}</td>
+            <td><span class="badge bg-light text-dark border">${escapeHTML(it.category_name || '-')}</span></td>
+            <td><code>${escapeHTML(it.sku || '-')}</code></td>
+            <td><small class="text-muted">${escapeHTML(it.barcode || '-')}</small></td>
             <td class="fw-bold text-danger">${it.stock} pcs</td>
             <td>Min: ${it.min_stock} pcs</td>
           </tr>
@@ -181,17 +181,17 @@ async function loadInventoryData() {
 
           const changeColor = m.change_qty > 0 ? "text-success fw-bold" : "text-danger fw-bold";
           const changePrefix = m.change_qty > 0 ? "+" : "";
-          const variantText = m.variant_info ? ` (${m.variant_info})` : "";
+          const variantText = m.variant_info ? ` (${escapeHTML(m.variant_info)})` : "";
 
           return `
             <tr>
               <td><small>${formatDate(m.created_at)}</small></td>
-              <td class="fw-medium">${m.product_name || 'Produk'}${variantText}</td>
-              <td><span class="badge ${typeBadge}">${m.movement_type.toUpperCase()}</span></td>
+              <td class="fw-medium">${escapeHTML(m.product_name || 'Produk')}${variantText}</td>
+              <td><span class="badge ${typeBadge}">${escapeHTML(m.movement_type.toUpperCase())}</span></td>
               <td class="${changeColor}">${changePrefix}${m.change_qty}</td>
               <td class="fw-bold">${m.current_stock}</td>
-              <td><small>${m.reference || '-'}</small></td>
-              <td><small class="text-muted">${m.note || '-'}</small></td>
+              <td><small>${escapeHTML(m.reference || '-')}</small></td>
+              <td><small class="text-muted">${escapeHTML(m.note || '-')}</small></td>
             </tr>
           `;
         }).join("");
@@ -217,11 +217,11 @@ async function loadSalesHistory() {
 
     tbody.innerHTML = orders.map(o => `
       <tr>
-        <td class="fw-bold"><code>${o.invoice_number}</code></td>
+        <td class="fw-bold"><code>${escapeHTML(o.invoice_number)}</code></td>
         <td>${formatDate(o.created_at)}</td>
-        <td>${o.cashier_name || '-'}</td>
-        <td>${o.customer_name || 'Umum'}</td>
-        <td><span class="badge bg-light text-dark border">${o.payment_method.toUpperCase()}</span></td>
+        <td>${escapeHTML(o.cashier_name || '-')}</td>
+        <td>${escapeHTML(o.customer_name || 'Umum')}</td>
+        <td><span class="badge bg-light text-dark border">${escapeHTML(o.payment_method.toUpperCase())}</span></td>
         <td class="fw-bold text-primary">${formatRupiah(o.total_amount)}</td>
         <td>
           <button class="btn btn-sm btn-outline-primary me-1" onclick="viewReceipt(${o.id})">
@@ -251,13 +251,13 @@ async function loadReturnsHistory() {
 
     tbody.innerHTML = returns.map(r => `
       <tr>
-        <td class="fw-bold"><code>${r.return_number}</code></td>
-        <td><code>${r.invoice_number}</code></td>
+        <td class="fw-bold"><code>${escapeHTML(r.return_number)}</code></td>
+        <td><code>${escapeHTML(r.invoice_number)}</code></td>
         <td>${formatDate(r.created_at)}</td>
-        <td><span class="badge bg-warning text-dark">${r.reason.replace('_', ' ').toUpperCase()}</span></td>
-        <td>${r.exchange_variant_info ? `<span class="badge bg-success">Tukar: ${r.exchange_variant_info}</span>` : '<span class="text-muted">Retur Saja</span>'}</td>
+        <td><span class="badge bg-warning text-dark">${escapeHTML(r.reason.replace('_', ' ').toUpperCase())}</span></td>
+        <td>${r.exchange_variant_info ? `<span class="badge bg-success">Tukar: ${escapeHTML(r.exchange_variant_info)}</span>` : '<span class="text-muted">Retur Saja</span>'}</td>
         <td>${formatRupiah(r.total_refund_amount)}</td>
-        <td><small class="text-muted">${r.notes || '-'}</small></td>
+        <td><small class="text-muted">${escapeHTML(r.notes || '-')}</small></td>
       </tr>
     `).join("");
 
@@ -277,8 +277,8 @@ async function loadSettingsForm() {
     document.getElementById("set-phone").value = s.phone || "";
     document.getElementById("set-email").value = s.email || "";
     document.getElementById("set-footer").value = s.receipt_footer || "";
-    document.getElementById("set-return-days").value = s.return_policy_days || 3;
-    document.getElementById("set-tax-rate").value = s.tax_rate || 11;
+    document.getElementById("set-return-days").value = s.return_policy_days ?? 3;
+    document.getElementById("set-tax-rate").value = s.tax_rate ?? 11;
     document.getElementById("set-tax-enabled").checked = s.is_tax_enabled || false;
   } catch (err) {
     console.error(err);
@@ -293,7 +293,7 @@ async function submitSettings() {
     phone: document.getElementById("set-phone").value,
     email: document.getElementById("set-email").value,
     receipt_footer: document.getElementById("set-footer").value,
-    return_policy_days: parseInt(document.getElementById("set-return-days").value) || 3,
+    return_policy_days: Number.isNaN(parseInt(document.getElementById("set-return-days").value)) ? 3 : parseInt(document.getElementById("set-return-days").value),
     tax_rate: parseFloat(document.getElementById("set-tax-rate").value) || 0,
     is_tax_enabled: document.getElementById("set-tax-enabled").checked
   };

@@ -1,21 +1,22 @@
 from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
+from app.core.validation import Name, Password, Username, UserRole, UTCResponse
 
-class UserBase(BaseModel):
-    username: str
-    full_name: str
-    role: str = "cashier"
+class UserBase(UTCResponse):
+    username: Username
+    full_name: Name
+    role: UserRole = "cashier"
     is_active: bool = True
 
 class UserCreate(UserBase):
-    password: str
+    password: Password
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
-    role: Optional[str] = None
+    full_name: Optional[Name] = None
+    role: Optional[UserRole] = None
     is_active: Optional[bool] = None
-    password: Optional[str] = None
+    password: Optional[Password] = None
 
 class UserOut(UserBase):
     id: int
@@ -26,8 +27,8 @@ class UserOut(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: Username
+    password: Password
 
 class TokenResponse(BaseModel):
     access_token: str

@@ -96,10 +96,10 @@
 
       tbody.innerHTML = customers.map(c => `
         <tr>
-          <td class="fw-bold"><i class="bi bi-person me-2 text-primary"></i>${c.name}</td>
-          <td><code>${c.phone || '-'}</code></td>
-          <td>${c.email || '-'}</td>
-          <td><small class="text-muted">${c.address || '-'}</small></td>
+          <td class="fw-bold"><i class="bi bi-person me-2 text-primary"></i>${escapeHTML(c.name)}</td>
+          <td><code>${escapeHTML(c.phone || '-')}</code></td>
+          <td>${escapeHTML(c.email || '-')}</td>
+          <td><small class="text-muted">${escapeHTML(c.address || '-')}</small></td>
           <td class="fw-bold text-success">${formatRupiah(c.total_spend)}</td>
           <td><span class="badge bg-light text-dark border">${c.visit_count}x belanja</span></td>
           <td><small>${formatDate(c.created_at)}</small></td>

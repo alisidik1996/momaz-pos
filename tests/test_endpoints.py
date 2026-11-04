@@ -3,7 +3,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.database import TenantManager, MasterBase, master_engine
+from app.database import TenantManager
 
 @pytest.fixture(scope="module")
 def client():
@@ -129,7 +129,7 @@ def test_product_image_upload(client, test_setup_admin):
     headers = {"Authorization": f"Bearer {test_setup_admin['token']}"}
 
     # Upload mock image file
-    file_content = b"fake-image-bytes-jpeg"
+    file_content = b"\xff\xd8\xff\xe0" + b"test-jpeg-image"
     file_obj = io.BytesIO(file_content)
     files = {"file": ("test_tshirt.jpg", file_obj, "image/jpeg")}
 
@@ -308,5 +308,3 @@ def test_update_product_and_variant_and_restock(client, test_setup_admin):
     assert restock_mov["change_qty"] == 20
     assert restock_mov["current_stock"] == 30
     assert restock_mov["reference"] == "INV-RESTOCK-2026-001"
-
-

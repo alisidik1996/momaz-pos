@@ -1,29 +1,32 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from fastapi import Depends, HTTPException, status, Request
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional, List
 import logging
-from app.database import get_db
-from app.core.security import hash_password, verify_password, decode_access_token, TokenExpiredError, TokenInvalidError
+from app.database import get_db, get_request_identity
+from app.core.transactions import transactional
+from app.core.security import hash_password, verify_password
 from app.modules.auth.models import User
 from app.modules.auth.schemas import UserCreate, UserUpdate
 
 logger = logging.getLogger(__name__)
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+bearer_scheme = HTTPBearer(auto_error=False, bearerFormat="JWT")
 
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
     # Case-insensitive lookup
-    return db.query(User).filter(User.username == username.lower()).first()
+    return db.query(User).filter(func.lower(User.username) == username.strip().lower()).first()
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
-    return db.query(User).filter(User.id == user_id).first()
+    return db.query(User).filter(User.id == user_id).populate_existing().first()
 
 def get_all_users(db: Session) -> List[User]:
     return db.query(User).order_by(User.id.desc()).all()
 
-def create_user(db: Session, user_in: UserCreate) -> User:
+@transactional
+def create_user(db: Session, user_in: UserCreate, commit: bool = True) -> User:
     # Normalize username to lowercase
-    username_normalized = user_in.username.lower()
+    username_normalized = user_in.username.strip().lower()
     existing = get_user_by_username(db, username_normalized)
     if existing:
         raise HTTPException(status_code=400, detail="Username sudah terdaftar.")
@@ -36,14 +39,20 @@ def create_user(db: Session, user_in: UserCreate) -> User:
         is_active=user_in.is_active
     )
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    db.flush()
+    if commit:
+        db.commit()
+        db.refresh(db_user)
     return db_user
 
-def update_user(db: Session, user_id: int, user_in: UserUpdate) -> User:
+@transactional
+def update_user(db: Session, user_id: int, user_in: UserUpdate, commit: bool = True) -> User:
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan.")
+    if user.role == "admin" and user.is_active and (user_in.role not in (None, "admin") or user_in.is_active is False):
+        if db.query(User).filter(User.role == "admin", User.is_active.is_(True)).count() <= 1:
+            raise HTTPException(status_code=400, detail="Tidak dapat menonaktifkan atau mengubah admin terakhir.")
     
     if user_in.full_name is not None:
         user.full_name = user_in.full_name
@@ -54,24 +63,28 @@ def update_user(db: Session, user_id: int, user_in: UserUpdate) -> User:
     if user_in.password:
         user.password_hash = hash_password(user_in.password)
         
-    db.commit()
-    db.refresh(user)
+    db.flush()
+    if commit:
+        db.commit()
+        db.refresh(user)
     return user
 
-def delete_user(db: Session, user_id: int, current_user_id: Optional[int] = None) -> User:
+@transactional
+def delete_user(db: Session, user_id: int, current_user_id: Optional[int] = None, commit: bool = True) -> User:
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan.")
     if current_user_id and user.id == current_user_id:
         raise HTTPException(status_code=400, detail="Anda tidak dapat menghapus akun Anda sendiri.")
     
-    if user.role == "admin":
-        admin_count = db.query(User).filter(User.role == "admin", User.is_active == True).count()
+    if user.role == "admin" and user.is_active:
+        admin_count = db.query(User).filter(User.role == "admin", User.is_active.is_(True)).count()
         if admin_count <= 1:
             raise HTTPException(status_code=400, detail="Tidak dapat menghapus admin terakhir. Minimal harus ada 1 akun administrator aktif.")
             
     db.delete(user)
-    db.commit()
+    if commit:
+        db.commit()
     return user
 
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
@@ -87,48 +100,10 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
 def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
-    token: Optional[str] = Depends(oauth2_scheme)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme)
 ) -> User:
-    from app.database import extract_token_from_string
-    # Try getting token from authorization header first, then fallback to cookie
-    auth_token = extract_token_from_string(token)
-    if not auth_token:
-        auth_token = extract_token_from_string(request.cookies.get("access_token"))
-            
-    if not auth_token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Belum terotentikasi. Silakan login terlebih dahulu.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    try:
-        payload = decode_access_token(auth_token)
-    except TokenExpiredError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    except TokenInvalidError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e),
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token tidak valid atau kedaluwarsa.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-        
-    username: str = payload.get("sub")
-    if not username:
-        raise HTTPException(status_code=401, detail="Token payload tidak valid.")
-        
-    user = get_user_by_username(db, username)
+    identity = get_request_identity(request)
+    user = getattr(request.state, "current_user", None) or get_user_by_username(db, identity["sub"])
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Pengguna tidak aktif atau tidak ditemukan.")
         

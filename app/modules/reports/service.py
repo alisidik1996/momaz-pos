@@ -1,12 +1,17 @@
 import io
 import csv
-from datetime import datetime, date, time, timezone, timedelta
-from typing import Dict, Any, List, Optional
+from datetime import datetime, date, time, timedelta
+from typing import Dict, Any, Optional
+from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.modules.sales.models import SalesOrder, SalesOrderItem
 from app.modules.catalog.models import ProductVariant, Product
 from app.core.models import StoreSettings
+from app.core.cache import invalidate_cache
+from app.core.csv_utils import safe_csv_cell
+from app.core.transactions import transactional
+from app.modules.reports.schemas import StoreSettingsUpdate
 
 def get_store_settings(db: Session) -> StoreSettings:
     settings = db.query(StoreSettings).first()
@@ -17,13 +22,17 @@ def get_store_settings(db: Session) -> StoreSettings:
         db.refresh(settings)
     return settings
 
+@transactional
 def update_store_settings(db: Session, data: dict) -> StoreSettings:
+    data = StoreSettingsUpdate.model_validate(data).model_dump(exclude_unset=True, exclude_none=True)
     settings = get_store_settings(db)
     for k, v in data.items():
-        if hasattr(settings, k) and v is not None:
-            setattr(settings, k, v)
+        setattr(settings, k, v)
     db.commit()
     db.refresh(settings)
+    tenant_slug = db.info.get("tenant_slug")
+    if tenant_slug:
+        invalidate_cache(f"store_name:{tenant_slug}")
     return settings
 
 def get_dashboard_summary(db: Session) -> Dict[str, Any]:
@@ -51,11 +60,12 @@ def get_dashboard_summary(db: Session) -> Dict[str, Any]:
     
     # Low stock count (products directly, plus variants if any)
     low_prod_count = db.query(Product).filter(
-        Product.is_active == True,
-        Product.stock <= Product.min_stock
+        Product.is_active.is_(True),
+        Product.stock <= Product.min_stock,
+        ~Product.variants.any(),
     ).count()
     low_var_count = db.query(ProductVariant).filter(
-        ProductVariant.is_active == True,
+        ProductVariant.is_active.is_(True),
         ProductVariant.stock <= ProductVariant.min_stock
     ).count()
     low_stock_count = low_prod_count + low_var_count
@@ -106,15 +116,18 @@ def get_sales_report(
 ) -> Dict[str, Any]:
     stmt = db.query(SalesOrder).options(
         joinedload(SalesOrder.cashier),
+        joinedload(SalesOrder.customer),
         joinedload(SalesOrder.items)
     ).filter(SalesOrder.status == "completed")
     
     if start_date:
-        d_start = datetime.strptime(start_date, "%Y-%m-%d")
+        d_start = datetime.combine(start_date, time.min) if isinstance(start_date, date) else datetime.strptime(start_date, "%Y-%m-%d")
         stmt = stmt.filter(SalesOrder.created_at >= d_start)
     if end_date:
-        d_end = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        d_end = (datetime.combine(end_date, time.min) if isinstance(end_date, date) else datetime.strptime(end_date, "%Y-%m-%d")) + timedelta(days=1)
         stmt = stmt.filter(SalesOrder.created_at < d_end)
+    if start_date and end_date and d_end <= d_start:
+        raise HTTPException(status_code=400, detail="Tanggal akhir harus setelah atau sama dengan tanggal awal.")
     if cashier_id:
         stmt = stmt.filter(SalesOrder.cashier_id == cashier_id)
         
@@ -163,7 +176,7 @@ def generate_sales_csv(
         c_name = o.cashier.full_name if o.cashier else "-"
         cust_name = o.customer.name if o.customer else "Umum"
         items_cnt = sum(it.quantity for it in o.items)
-        writer.writerow([
+        writer.writerow([safe_csv_cell(value) for value in [
             o.invoice_number,
             o.created_at.strftime("%Y-%m-%d %H:%M"),
             c_name,
@@ -174,6 +187,6 @@ def generate_sales_csv(
             f"{o.total_amount:.2f}",
             o.payment_method.upper(),
             items_cnt
-        ])
+        ]])
         
     return output.getvalue()

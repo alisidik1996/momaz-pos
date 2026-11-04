@@ -56,6 +56,9 @@ app/static/uploads/products/*
 .pytest_cache/
 .coverage
 htmlcov/
+coverage.xml
+.ruff_cache/
+node_modules/
 
 # Editor & OS files
 .vscode/

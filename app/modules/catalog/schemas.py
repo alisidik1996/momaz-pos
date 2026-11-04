@@ -1,9 +1,15 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional, List
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from typing import Optional, List, Annotated, Literal
 from datetime import datetime
+from app.core.validation import Money, Name, PositiveId, StockQuantity, UTCResponse
+
+ProductName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=150)]
+SizeName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=30)]
+ColorName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
+CatalogCode = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50)]
 
 class CategoryBase(BaseModel):
-    name: str
+    name: Name
     description: Optional[str] = None
 
 class CategoryCreate(CategoryBase):
@@ -15,7 +21,7 @@ class CategoryOut(CategoryBase):
     model_config = ConfigDict(from_attributes=True)
 
 class BrandBase(BaseModel):
-    name: str
+    name: Name
 
 class BrandCreate(BrandBase):
     pass
@@ -25,28 +31,28 @@ class BrandOut(BrandBase):
     model_config = ConfigDict(from_attributes=True)
 
 class VariantBase(BaseModel):
-    sku: Optional[str] = None
-    barcode: Optional[str] = None
-    size: str
-    color: str
-    cost_price: float = 0.0
-    sell_price: float = 0.0
-    stock: int = 0
-    min_stock: int = 5
+    sku: Optional[CatalogCode] = None
+    barcode: Optional[CatalogCode] = None
+    size: SizeName
+    color: ColorName
+    cost_price: Money = 0.0
+    sell_price: Money = 0.0
+    stock: StockQuantity = 0
+    min_stock: StockQuantity = 5
     is_active: bool = True
 
 class VariantCreate(VariantBase):
-    product_id: Optional[int] = None
+    product_id: PositiveId
 
 class VariantUpdate(BaseModel):
-    sku: Optional[str] = None
-    barcode: Optional[str] = None
-    size: Optional[str] = None
-    color: Optional[str] = None
-    cost_price: Optional[float] = None
-    sell_price: Optional[float] = None
-    stock: Optional[int] = None
-    min_stock: Optional[int] = None
+    sku: Optional[CatalogCode] = None
+    barcode: Optional[CatalogCode] = None
+    size: Optional[SizeName] = None
+    color: Optional[ColorName] = None
+    cost_price: Optional[Money] = None
+    sell_price: Optional[Money] = None
+    stock: Optional[StockQuantity] = None
+    min_stock: Optional[StockQuantity] = None
     is_active: Optional[bool] = None
 
 class VariantOut(VariantBase):
@@ -54,53 +60,65 @@ class VariantOut(VariantBase):
     product_id: int
     model_config = ConfigDict(from_attributes=True)
 
-class ProductBase(BaseModel):
-    name: str
-    sku: Optional[str] = None
-    barcode: Optional[str] = None
-    category_id: Optional[int] = None
-    brand_id: Optional[int] = None
+class ProductBase(UTCResponse):
+    name: ProductName
+    sku: Optional[CatalogCode] = None
+    barcode: Optional[CatalogCode] = None
+    category_id: Optional[PositiveId] = None
+    brand_id: Optional[PositiveId] = None
     description: Optional[str] = None
-    cost_price: float = 0.0
-    base_price: float = 0.0
-    discount_price: Optional[float] = 0.0
-    stock: int = 0
-    min_stock: int = 5
+    cost_price: Money = 0.0
+    base_price: Money = 0.0
+    discount_price: Optional[Money] = 0.0
+    stock: StockQuantity = 0
+    min_stock: StockQuantity = 5
     image_url: Optional[str] = None
     is_active: bool = True
-    member_discount_type: Optional[str] = "percent"       # 'percent' or 'nominal'
-    member_discount_value: Optional[float] = 0.0
-    affiliate_commission_type: Optional[str] = "percent"  # 'percent' or 'nominal'
-    affiliate_commission_value: Optional[float] = 0.0
+    member_discount_type: Optional[Literal["percent", "nominal"]] = "percent"
+    member_discount_value: Optional[Money] = 0.0
+    affiliate_commission_type: Optional[Literal["percent", "nominal"]] = "percent"
+    affiliate_commission_value: Optional[Money] = 0.0
 
 class ProductCreate(ProductBase):
-    pass
+    @model_validator(mode="after")
+    def validate_percentages(self):
+        for prefix in ("member_discount", "affiliate_commission"):
+            if getattr(self, f"{prefix}_type") == "percent" and (getattr(self, f"{prefix}_value") or 0) > 100:
+                raise ValueError("Persentase diskon atau komisi tidak boleh melebihi 100%.")
+        return self
 
 class ProductUpdate(BaseModel):
-    name: Optional[str] = None
-    sku: Optional[str] = None
-    barcode: Optional[str] = None
-    category_id: Optional[int] = None
-    brand_id: Optional[int] = None
+    name: Optional[ProductName] = None
+    sku: Optional[CatalogCode] = None
+    barcode: Optional[CatalogCode] = None
+    category_id: Optional[PositiveId] = None
+    brand_id: Optional[PositiveId] = None
     description: Optional[str] = None
-    cost_price: Optional[float] = None
-    base_price: Optional[float] = None
-    discount_price: Optional[float] = None
-    stock: Optional[int] = None
-    min_stock: Optional[int] = None
+    cost_price: Optional[Money] = None
+    base_price: Optional[Money] = None
+    discount_price: Optional[Money] = None
+    stock: Optional[StockQuantity] = None
+    min_stock: Optional[StockQuantity] = None
     image_url: Optional[str] = None
     is_active: Optional[bool] = None
-    member_discount_type: Optional[str] = None
-    member_discount_value: Optional[float] = None
-    affiliate_commission_type: Optional[str] = None
-    affiliate_commission_value: Optional[float] = None
+    member_discount_type: Optional[Literal["percent", "nominal"]] = None
+    member_discount_value: Optional[Money] = None
+    affiliate_commission_type: Optional[Literal["percent", "nominal"]] = None
+    affiliate_commission_value: Optional[Money] = None
 
 class ProductAffiliateRuleUpdate(BaseModel):
-    product_id: int
-    member_discount_type: str = "percent"
-    member_discount_value: float = 0.0
-    affiliate_commission_type: str = "percent"
-    affiliate_commission_value: float = 0.0
+    product_id: PositiveId
+    member_discount_type: Literal["percent", "nominal"] = "percent"
+    member_discount_value: Money = 0.0
+    affiliate_commission_type: Literal["percent", "nominal"] = "percent"
+    affiliate_commission_value: Money = 0.0
+
+    @model_validator(mode="after")
+    def validate_percentages(self):
+        for prefix in ("member_discount", "affiliate_commission"):
+            if getattr(self, f"{prefix}_type") == "percent" and getattr(self, f"{prefix}_value") > 100:
+                raise ValueError("Persentase diskon atau komisi tidak boleh melebihi 100%.")
+        return self
 
 class BatchAffiliateRuleUpdate(BaseModel):
     rules: List[ProductAffiliateRuleUpdate]
@@ -115,13 +133,13 @@ class ProductOut(ProductBase):
     model_config = ConfigDict(from_attributes=True)
 
 class MatrixGenerateRequest(BaseModel):
-    product_id: int
-    sizes: List[str]             # e.g., ["S", "M", "L", "XL"]
-    colors: List[str]            # e.g., ["Hitam", "Putih", "Navy"]
-    cost_price: float = 0.0
-    sell_price: float = 0.0
-    initial_stock: int = 0
-    min_stock: int = 5
+    product_id: PositiveId
+    sizes: List[SizeName] = Field(min_length=1)
+    colors: List[ColorName] = Field(min_length=1)
+    cost_price: Money = 0.0
+    sell_price: Money = 0.0
+    initial_stock: StockQuantity = 0
+    min_stock: StockQuantity = 5
     sku_prefix: Optional[str] = None  # e.g., "KMT"
 
 class ScanResultOut(BaseModel):

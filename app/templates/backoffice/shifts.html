@@ -84,7 +84,7 @@
         return `
           <tr>
             <td class="fw-bold">#${s.id}</td>
-            <td class="fw-semibold">${s.cashier_name || 'Kasir'}</td>
+            <td class="fw-semibold">${escapeHTML(s.cashier_name || 'Kasir')}</td>
             <td><small>${formatDate(s.start_time)}</small></td>
             <td><small>${s.end_time ? formatDate(s.end_time) : '<span class="text-success fw-bold">Sedang Berjalan</span>'}</small></td>
             <td>${formatRupiah(s.starting_cash)}</td>

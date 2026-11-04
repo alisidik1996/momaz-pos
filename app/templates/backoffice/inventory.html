@@ -281,13 +281,13 @@
 
         dropdown.innerHTML = products.slice(0, 8).map(p => {
           const stock = p.stock !== null && p.stock !== undefined ? p.stock : (p.total_stock || 0);
-          const safeProduct = JSON.stringify(p).replace(/"/g, '&quot;');
+          const safeProduct = jsonForAttribute(p);
           return `
             <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2" onclick="selectOpnameProduct(${safeProduct})">
               <div>
-                <div class="fw-bold small text-dark">${p.name}</div>
+                <div class="fw-bold small text-dark">${escapeHTML(p.name)}</div>
                 <div class="text-muted" style="font-size: 0.75rem;">
-                  SKU: <code>${p.sku || '-'}</code> | Barcode: <code>${p.barcode || '-'}</code>
+                  SKU: <code>${escapeHTML(p.sku || '-')}</code> | Barcode: <code>${escapeHTML(p.barcode || '-')}</code>
                 </div>
               </div>
               <div class="text-end ms-2">
@@ -386,13 +386,13 @@
 
         dropdown.innerHTML = products.slice(0, 8).map(p => {
           const stock = p.stock !== null && p.stock !== undefined ? p.stock : (p.total_stock || 0);
-          const safeProduct = JSON.stringify(p).replace(/"/g, '&quot;');
+          const safeProduct = jsonForAttribute(p);
           return `
             <button type="button" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between p-2" onclick="selectStockInProduct(${safeProduct})">
               <div>
-                <div class="fw-bold small text-dark">${p.name}</div>
+                <div class="fw-bold small text-dark">${escapeHTML(p.name)}</div>
                 <div class="text-muted" style="font-size: 0.75rem;">
-                  SKU: <code>${p.sku || '-'}</code> | Barcode: <code>${p.barcode || '-'}</code>
+                  SKU: <code>${escapeHTML(p.sku || '-')}</code> | Barcode: <code>${escapeHTML(p.barcode || '-')}</code>
                 </div>
               </div>
               <div class="text-end ms-2">

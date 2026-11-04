@@ -1,4 +1,3 @@
-import pytest
 from app.modules.catalog import service
 from app.modules.catalog.schemas import ProductCreate, MatrixGenerateRequest
 

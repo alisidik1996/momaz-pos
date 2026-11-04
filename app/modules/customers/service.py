@@ -1,19 +1,19 @@
-import random
-import string
+import secrets
 from typing import List, Optional
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 from app.modules.customers.models import Customer, AffiliateCommission
 from app.modules.customers.schemas import CustomerCreate, CustomerUpdate
+from app.core.transactions import transactional
 
 def generate_random_member_id(db: Session, length: int = 12) -> str:
     """Generate a unique 12-digit alphanumeric uppercase member ID"""
     chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789" # Omit confusing O, 0, I, 1
     for _ in range(50):
-        code = "".join(random.choices(chars, k=length))
+        code = "".join(secrets.choice(chars) for _ in range(length))
         if not db.query(Customer).filter(Customer.member_id == code).first():
             return code
-    return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    raise HTTPException(status_code=503, detail="Gagal membuat ID member unik. Silakan coba kembali.")
 
 def get_customers(db: Session, query: Optional[str] = None) -> List[Customer]:
     stmt = db.query(Customer)
@@ -36,6 +36,7 @@ def get_customer_by_code(db: Session, code: str) -> Optional[Customer]:
         cust = db.query(Customer).filter(Customer.phone == code.strip()).first()
     return cust
 
+@transactional
 def create_customer(db: Session, cust_in: CustomerCreate) -> Customer:
     if cust_in.phone:
         existing = db.query(Customer).filter(Customer.phone == cust_in.phone).first()
@@ -66,6 +67,7 @@ def create_customer(db: Session, cust_in: CustomerCreate) -> Customer:
     db.refresh(customer)
     return customer
 
+@transactional
 def update_customer(db: Session, customer_id: int, cust_in: CustomerUpdate) -> Customer:
     customer = get_customer_by_id(db, customer_id)
     if not customer:
@@ -81,11 +83,12 @@ def update_customer(db: Session, customer_id: int, cust_in: CustomerUpdate) -> C
     return customer
 
 def get_affiliate_commissions(db: Session, customer_id: Optional[int] = None) -> List[AffiliateCommission]:
-    query = db.query(AffiliateCommission)
+    query = db.query(AffiliateCommission).options(joinedload(AffiliateCommission.customer))
     if customer_id:
         query = query.filter(AffiliateCommission.customer_id == customer_id)
     return query.order_by(AffiliateCommission.id.desc()).all()
 
+@transactional
 def delete_customer(db: Session, customer_id: int):
     customer = get_customer_by_id(db, customer_id)
     if not customer:

@@ -181,7 +181,7 @@
       updateUserStats(usersListCache);
     } catch (err) {
       console.error("Gagal memuat pengguna:", err);
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>Gagal memuat data pengguna: ${err.message || 'Kesalahan jaringan'}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-4"><i class="bi bi-exclamation-triangle me-2"></i>Gagal memuat data pengguna: ${escapeHTML(err.message || 'Kesalahan jaringan')}</td></tr>`;
     }
   }
 
@@ -224,15 +224,15 @@
           <td>
             <div class="d-flex align-items-center gap-2">
               <div class="rounded-circle bg-light border text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 0.9rem;">
-                ${initial}
+                ${escapeHTML(initial)}
               </div>
               <div>
-                <div class="fw-bold text-dark">${u.full_name || '-'}</div>
+                <div class="fw-bold text-dark">${escapeHTML(u.full_name || '-')}</div>
                 <small class="text-muted">ID: #${u.id}</small>
               </div>
             </div>
           </td>
-          <td><code>${u.username}</code></td>
+          <td><code>${escapeHTML(u.username)}</code></td>
           <td>${roleBadge}</td>
           <td>${statusBadge}</td>
           <td><small class="text-muted">${formatDate(u.created_at)}</small></td>
@@ -240,7 +240,7 @@
             <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditUserModal(${u.id})" title="Edit User">
               <i class="bi bi-pencil"></i>
             </button>
-            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id}, '${u.username.replace(/'/g, "\\'")}')" title="Hapus User">
+            <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id}, ${jsonForAttribute(u.username)})" title="Hapus User">
               <i class="bi bi-trash"></i>
             </button>
           </td>
@@ -289,7 +289,7 @@
     document.getElementById("req-password-mark").style.display = "none";
     document.getElementById("user-password-hint").innerText = "Kosongkan jika tidak ingin mengubah password.";
 
-    document.getElementById("userModalTitle").innerHTML = '<i class="bi bi-person-fill-gear me-2"></i>Edit Pengguna: ' + user.username;
+    document.getElementById("userModalTitle").innerHTML = '<i class="bi bi-person-fill-gear me-2"></i>Edit Pengguna: ' + escapeHTML(user.username);
 
     userModalInstance.show();
   }

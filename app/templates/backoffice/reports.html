@@ -58,7 +58,7 @@
     </div>
     <div class="col-md-3">
       <div class="stat-card">
-        <span class="text-muted small fw-semibold text-uppercase">Keuntungan Bersih / Laba</span>
+        <span class="text-muted small fw-semibold text-uppercase">Laba Kotor (Omset - HPP)</span>
         <h4 class="fw-bold text-success mt-2 mb-0" id="rep-total-profit">Rp 0</h4>
       </div>
     </div>
@@ -130,10 +130,10 @@
 
       tbody.innerHTML = data.orders.map(o => `
         <tr>
-          <td><code>${o.invoice_number}</code></td>
-          <td><small>${o.date}</small></td>
-          <td>${o.cashier}</td>
-          <td><span class="badge bg-light text-dark border">${o.payment_method}</span></td>
+          <td><code>${escapeHTML(o.invoice_number)}</code></td>
+          <td><small>${escapeHTML(o.date)}</small></td>
+          <td>${escapeHTML(o.cashier)}</td>
+          <td><span class="badge bg-light text-dark border">${escapeHTML(o.payment_method)}</span></td>
           <td>${o.items_count} pcs</td>
           <td>${formatRupiah(o.subtotal)}</td>
           <td class="text-danger">-${formatRupiah(o.discount)}</td>

@@ -15,7 +15,7 @@ Dibangun dengan **Python FastAPI**, database **SQLite** teroptimasi (WAL Mode & 
 
 2. **Katalog Produk Pakaian Lengkap & Impor/Ekspor Massal (CSV):**
    - Field Produk Induk: Nama, Deskripsi, **Harga Normal**, **Harga Diskon/Promo**, **SKU Induk**, **Barcode Induk**, Kategori, Brand, dan **Upload Foto Produk** langsung ke server.
-   - **Impor Massal Produk (Upload CSV)**: Mendukung upload ratusan produk sekaligus dalam format *Row-per-Variant*. Otomatis membuat kategori, brand, SKU varian, dan barcode jika belum ada.
+   - **Impor Massal Produk (Upload CSV)**: Setiap baris mewakili produk. Otomatis membuat kategori, brand, SKU, dan barcode jika belum ada; stok produk yang sudah terdaftar ditambahkan sebagai restock.
    - **Ekspor Katalog Produk (Download CSV)**: Mengekspor seluruh data pakaian ke file CSV berstandar UTF-8 BOM yang dapat langsung dibuka dan diedit di Microsoft Excel.
    - **Unduh Template CSV**: Format acuan siap pakai dengan contoh varian baju untuk memudahkan pengguna menginput data.
    - Manajemen Kategori & Brand: Tambah, edit, dan hapus kategori serta brand langsung dari modal interaktif di Backoffice.
@@ -29,8 +29,6 @@ Dibangun dengan **Python FastAPI**, database **SQLite** teroptimasi (WAL Mode & 
    - Shortcut keyboard kasir:
      - `F1`: Cari nama pakaian
      - `F2`: Fokus ke scanner barcode
-     - `F3`: Parkir bill (Hold Cart) saat pelanggan ke fitting room
-     - `F4`: Panggil kembali transaksi terparkir (Recall Cart)
      - `F8`: Bayar tunai (Cash)
      - `F9`: Bayar non-tunai (QRIS / EDC)
 
@@ -113,14 +111,15 @@ momaz-pos/
 ## Cara Menjalankan Aplikasi
 
 ### 1. Instalasi Dependensi
-Pastikan Python 3.10+ telah terinstal:
+Pastikan Python 3.10+ telah terinstal. Gunakan virtual environment proyek:
 ```powershell
-pip install -r requirements.txt
+python -m venv .venv
+.\.venv\Scripts\python -m pip install -r requirements.txt
 ```
 
 ### 2. Jalankan Aplikasi
 ```powershell
-python run.py
+.\.venv\Scripts\python run.py
 ```
 Aplikasi akan berjalan di port **8181**:
 - **Halaman Login & Daftar Admin:** [http://localhost:8181/login](http://localhost:8181/login)
@@ -137,11 +136,11 @@ Aplikasi akan berjalan di port **8181**:
 ---
 
 ## Menjalankan Pengujian Otomatis (Pytest)
-Untuk menjalankan seluruh 12 automated unit & integration test:
+Untuk menjalankan seluruh pengujian unit dan integrasi:
 ```powershell
-pytest tests/ -v
+.\.venv\Scripts\python -m pytest tests/ -v
 ```
-Semua 12 pengujian meliputi:
+Pengujian memakai database master, tenant, dan unggahan sementara yang terpisah dari data aplikasi. Pengujian meliputi:
 - Pembuatan produk induk & generator varian warna/ukuran.
 - Redirect halaman unauthenticated dan authenticated.
 - Endpoint kategori dan brand (tambah, tampil, hapus).
@@ -154,3 +153,22 @@ Semua 12 pengujian meliputi:
 - Penolakan checkout bila stok tidak mencukupi.
 - Retur struk pakaian dan tukar size busana.
 - Lifecycle pembukaan dan penutupan shift kasir dengan rekonsiliasi uang fisik.
+- Penolakan header tenant asing, pencabutan sesi setelah perubahan password, dan pencegahan pengambilalihan username antar-toko.
+- Checkout bersamaan, rollback transaksi gagal, batas jumlah/nilai retur, dan pembatalan komisi affiliate.
+- Migrasi SQLite, isolasi nama tabel PostgreSQL, validasi file, serta kontrak upload Vercel Blob v13 dengan transport HTTP mock.
+
+### Pengujian frontend
+Gunakan Node.js 18+ untuk pengujian DOM dengan jsdom:
+```powershell
+npm ci
+npm test
+```
+Pengujian mencakup escaping HTML, identitas item/varian, pencarian asynchronous, klik pembayaran ganda, diskon member, dan sintaks script template.
+
+### Catatan konfigurasi dan kompatibilitas
+- Produksi memerlukan `SECRET_KEY` acak minimal 32 byte. Tanpa konfigurasi tersebut, development memakai kunci sementara per proses.
+- Sesi terikat ke password akun. Token dari versi lama perlu login ulang; reset password juga mencabut token yang sudah diterbitkan.
+- Cookie autentikasi memakai HttpOnly dan Secure pada HTTPS/produksi. API menerima bearer token atau cookie same-origin.
+- Unggahan gambar maksimal 5 MB dengan format PNG/JPEG/GIF/WEBP; CSV maksimal 10 MB. Kegagalan penyimpanan dikembalikan sebagai error.
+- PostgreSQL memakai nama tabel berskema eksplisit agar isolasi tenant tidak bergantung pada `search_path` koneksi.
+- Invoice baru menyimpan snapshot komisi per item. Retur invoice lama tanpa snapshot memakai pembatalan komisi proporsional terhadap nilai retur.

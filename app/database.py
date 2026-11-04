@@ -1,443 +1,251 @@
 from pathlib import Path
+from threading import RLock
 from typing import Optional, Generator
 import re
-from fastapi import Request, HTTPException, Depends
-from sqlalchemy import create_engine, event, text
+
+from fastapi import Request, HTTPException
+from sqlalchemy import create_engine, event, text, func
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+
 from app.config import settings
 
-# Determine database dialect
 is_postgres = bool(settings.MASTER_DATABASE_URL and settings.MASTER_DATABASE_URL.startswith("postgres"))
 
-# 1. Master Database Setup
-master_connect_args = {} if is_postgres else {"check_same_thread": False}
+
+def _configure_sqlite_engine(engine):
+    @event.listens_for(engine, "connect")
+    def set_sqlite_pragmas(connection, _):
+        synchronous = settings.SQLITE_SYNCHRONOUS.upper()
+        if synchronous not in {"OFF", "NORMAL", "FULL", "EXTRA"}:
+            raise ValueError("SQLITE_SYNCHRONOUS tidak valid.")
+        cursor = connection.cursor()
+        try:
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA journal_mode=WAL")
+            cursor.execute(f"PRAGMA synchronous={synchronous}")
+        finally:
+            cursor.close()
+
+
 master_engine = create_engine(
     settings.MASTER_DATABASE_URL,
-    connect_args=master_connect_args,
+    connect_args={} if is_postgres else {"check_same_thread": False},
     pool_pre_ping=True,
-    echo=False
+    echo=False,
 )
-
-# Unpooled engine khusus DDL (CREATE SCHEMA, CREATE TABLE) — Neon pooler tidak support DDL
-_master_unpooled_engine = None
-
-def _get_master_unpooled_engine():
-    """Lazy-create unpooled master engine untuk operasi DDL di PostgreSQL."""
-    global _master_unpooled_engine
-    if _master_unpooled_engine is None:
-        unpooled_url = settings.MASTER_DATABASE_URL_UNPOOLED
-        connect_args = {} if is_postgres else {"check_same_thread": False}
-        _master_unpooled_engine = create_engine(
-            unpooled_url,
-            connect_args=connect_args,
-            pool_pre_ping=True,
-            echo=False
-        )
-    return _master_unpooled_engine
-
 if not is_postgres:
-    @event.listens_for(master_engine, "connect")
-    def set_master_sqlite_pragma(dbapi_connection, connection_record):
-        from app.config import settings
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON;")
-        cursor.execute("PRAGMA journal_mode=WAL;")
-        cursor.execute(f"PRAGMA synchronous={settings.SQLITE_SYNCHRONOUS};")
-        cursor.close()
+    _configure_sqlite_engine(master_engine)
+else:
+    master_engine = master_engine.execution_options(schema_translate_map={None: "public"})
 
 MasterSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=master_engine)
 MasterBase = declarative_base()
+Base = declarative_base()
+_master_unpooled_engine = None
+_master_engine_lock = RLock()
+
+
+def _get_master_unpooled_engine():
+    global _master_unpooled_engine
+    with _master_engine_lock:
+        if _master_unpooled_engine is None:
+            _master_unpooled_engine = create_engine(
+                settings.MASTER_DATABASE_URL_UNPOOLED,
+                connect_args={} if is_postgres else {"check_same_thread": False},
+                pool_pre_ping=True,
+                echo=False,
+            )
+            if is_postgres:
+                _master_unpooled_engine = _master_unpooled_engine.execution_options(schema_translate_map={None: "public"})
+        return _master_unpooled_engine
+
 
 def get_master_db() -> Generator[Session, None, None]:
-    db = MasterSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    with MasterSessionLocal() as db:
+        try:
+            yield db
+        except Exception:
+            db.rollback()
+            raise
 
-# 2. Tenant Database Base & Manager
-Base = declarative_base()
 
 class TenantManager:
     _engines = {}
     _sessionmakers = {}
+    _lock = RLock()
+
+    @classmethod
+    def validate_slug(cls, tenant_slug: str) -> str:
+        # New slugs use <=56 ASCII characters. Safe legacy Unicode slugs and
+        # 100-character filenames remain accessible without renaming data.
+        if not isinstance(tenant_slug, str) or len(tenant_slug) > 100 or not re.fullmatch(r"[\w-]+", tenant_slug):
+            raise ValueError("Slug toko tidak valid (maksimal 100 karakter, tanpa pemisah path).")
+        return tenant_slug
+
+    @classmethod
+    def schema_name(cls, tenant_slug: str) -> str:
+        # Match the legacy PostgreSQL normalization and identifier truncation.
+        return "tenant_" + re.sub(r"[^a-zA-Z0-9_]", "_", tenant_slug.lower())[:56]
+
+    @classmethod
+    def _check_schema_collision(cls, tenant_slug: str):
+        from app.modules.tenants.models import Tenant
+
+        schema = cls.schema_name(tenant_slug)
+        with MasterSessionLocal() as db:
+            for (other_slug,) in db.query(Tenant.slug).all():
+                if other_slug != tenant_slug and cls.schema_name(other_slug) == schema:
+                    raise HTTPException(status_code=409, detail="Nama database toko bentrok dengan toko lain. Konfigurasi tenant perlu diperbaiki.")
 
     @classmethod
     def get_db_path(cls, tenant_slug: str) -> Path:
-        return settings.TENANTS_DIR / f"{tenant_slug}.db"
+        return settings.TENANTS_DIR / f"{cls.validate_slug(tenant_slug)}.db"
 
     @classmethod
     def get_engine(cls, tenant_slug: str):
-        if tenant_slug not in cls._engines:
-            if is_postgres:
-                # Di PostgreSQL (Neon.tech), isolasi tiap tenant di schema sendiri
-                schema_name = "tenant_" + re.sub(r"[^a-zA-Z0-9_]", "_", tenant_slug.lower())
-                
-                # Gunakan UNPOOLED connection untuk CREATE SCHEMA (DDL)
-                # Neon pooler (PgBouncer) tidak mendukung statement DDL
-                unpooled_engine = _get_master_unpooled_engine()
-                with unpooled_engine.connect() as conn:
-                    # Use parameterized query for schema creation (extra safety)
-                    # Note: PostgreSQL doesn't support parameters in DDL, so we validate schema_name first
-                    if not re.match(r'^[a-zA-Z0-9_]+$', schema_name):
-                        raise ValueError(f"Invalid schema name: {schema_name}")
-                    conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";'))
-                    conn.commit()
-
-                # Gunakan POOLED URL untuk query reguler, tapi set search_path
-                # via event listener (bukan startup params — pooler tidak support itu)
-                engine = create_engine(
-                    settings.DATABASE_URL,
-                    pool_pre_ping=True,
-                    echo=False
-                )
-
-                # Set search_path setiap kali koneksi baru dibuat
-                # Ini kompatibel dengan Neon pooler karena dikirim sebagai SQL biasa
-                @event.listens_for(engine, "connect")
-                def set_tenant_search_path(dbapi_connection, connection_record):
-                    cursor = dbapi_connection.cursor()
-                    cursor.execute(f'SET search_path TO "{schema_name}", public')
-                    cursor.close()
-            else:
-                db_path = cls.get_db_path(tenant_slug)
-                engine = create_engine(
-                    f"sqlite:///{db_path}",
-                    connect_args={"check_same_thread": False},
-                    echo=False
-                )
-                
-                @event.listens_for(engine, "connect")
-                def set_tenant_sqlite_pragma(dbapi_connection, connection_record):
-                    from app.config import settings
-                    cursor = dbapi_connection.cursor()
-                    cursor.execute("PRAGMA foreign_keys=ON;")
-                    cursor.execute("PRAGMA journal_mode=WAL;")
-                    cursor.execute(f"PRAGMA synchronous={settings.SQLITE_SYNCHRONOUS};")
-                    cursor.close()
-
-            cls._engines[tenant_slug] = engine
-            cls._sessionmakers[tenant_slug] = sessionmaker(
-                autocommit=False, autoflush=False, bind=engine
-            )
-            cls._run_migrations(engine)
-        return cls._engines[tenant_slug]
+        cls.validate_slug(tenant_slug)
+        with cls._lock:
+            if tenant_slug in cls._engines:
+                return cls._engines[tenant_slug]
+            engine = None
+            try:
+                if is_postgres:
+                    cls._check_schema_collision(tenant_slug)
+                    schema_name = cls.schema_name(tenant_slug)
+                    # Fully qualify every ORM/DDL table, rather than relying on
+                    # connection-local search_path that a transaction pooler can reset.
+                    schema_map = {None: schema_name}
+                    with _get_master_unpooled_engine().begin() as connection:
+                        connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"'))
+                        connection = connection.execution_options(schema_translate_map=schema_map)
+                        cls._run_migrations(connection)
+                        Base.metadata.create_all(bind=connection)
+                    engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True, echo=False).execution_options(schema_translate_map=schema_map)
+                else:
+                    settings.TENANTS_DIR.mkdir(parents=True, exist_ok=True)
+                    engine = create_engine(
+                        f"sqlite:///{cls.get_db_path(tenant_slug)}",
+                        connect_args={"check_same_thread": False},
+                        pool_pre_ping=True,
+                        echo=False,
+                    )
+                    _configure_sqlite_engine(engine)
+                    cls._run_migrations(engine)
+                    Base.metadata.create_all(bind=engine)
+                factory = sessionmaker(autocommit=False, autoflush=False, bind=engine, info={"tenant_slug": tenant_slug})
+                # Publish the engine and factory together only after initialization succeeds.
+                cls._sessionmakers[tenant_slug] = factory
+                cls._engines[tenant_slug] = engine
+                return engine
+            except Exception:
+                if engine is not None:
+                    engine.dispose()
+                raise
 
     @classmethod
     def get_session(cls, tenant_slug: str) -> Session:
-        cls.get_engine(tenant_slug)
-        return cls._sessionmakers[tenant_slug]()
+        with cls._lock:
+            cls.get_engine(tenant_slug)
+            return cls._sessionmakers[tenant_slug]()
 
     @classmethod
-    def _run_migrations(cls, engine):
-        if is_postgres:
-            # Pada PostgreSQL: jalankan DDL (create_all) via UNPOOLED engine
-            # agar kompatibel dengan Neon pooler yang tidak mendukung DDL
-            import logging
-            logger = logging.getLogger(__name__)
+    def _run_migrations(cls, bind):
+        from app.core.migrations import migrate_tenant_schema
 
-            try:
-                # Coba jalankan create_all langsung dulu (untuk unpooled engine)
-                Base.metadata.create_all(bind=engine)
-            except Exception as e:
-                # Jika gagal (misalnya pooler tidak support), buat unpooled engine sementara
-                logger.warning(f"DDL via pooled connection failed, trying unpooled: {e}")
-                try:
-                    unpooled_url = settings.DATABASE_URL_UNPOOLED or settings.DATABASE_URL
-                    tmp_engine = create_engine(unpooled_url, pool_pre_ping=True, echo=False)
-                    Base.metadata.create_all(bind=tmp_engine)
-                    tmp_engine.dispose()
-                except Exception as e2:
-                    logger.error(f"CRITICAL: DDL create_all failed on unpooled connection: {e2}")
-                    raise RuntimeError(f"Failed to initialize tenant database schema: {e2}")
-            return
-
-        from sqlalchemy import inspect, text
-        try:
-            inspector = inspect(engine)
-            existing_tables = inspector.get_table_names()
-            
-            with engine.connect() as conn:
-                # 1. Products table
-                if "products" in existing_tables:
-                    prod_cols = [c["name"] for c in inspector.get_columns("products")]
-                    if "cost_price" not in prod_cols:
-                        conn.execute(text("ALTER TABLE products ADD COLUMN cost_price FLOAT DEFAULT 0.0;"))
-                    if "stock" not in prod_cols:
-                        conn.execute(text("ALTER TABLE products ADD COLUMN stock INTEGER DEFAULT 0;"))
-                    if "min_stock" not in prod_cols:
-                        conn.execute(text("ALTER TABLE products ADD COLUMN min_stock INTEGER DEFAULT 5;"))
-                    if "member_discount_type" not in prod_cols:
-                        conn.execute(text("ALTER TABLE products ADD COLUMN member_discount_type VARCHAR(20) DEFAULT 'percent';"))
-                    if "member_discount_value" not in prod_cols:
-                        conn.execute(text("ALTER TABLE products ADD COLUMN member_discount_value FLOAT DEFAULT 0.0;"))
-                    if "affiliate_commission_type" not in prod_cols:
-                        conn.execute(text("ALTER TABLE products ADD COLUMN affiliate_commission_type VARCHAR(20) DEFAULT 'percent';"))
-                    if "affiliate_commission_value" not in prod_cols:
-                        conn.execute(text("ALTER TABLE products ADD COLUMN affiliate_commission_value FLOAT DEFAULT 0.0;"))
-                    
-                    if "product_variants" in existing_tables:
-                        try:
-                            conn.execute(text("""
-                                UPDATE products SET
-                                    stock = COALESCE((SELECT SUM(stock) FROM product_variants WHERE product_variants.product_id = products.id), stock),
-                                    cost_price = COALESCE((SELECT AVG(cost_price) FROM product_variants WHERE product_variants.product_id = products.id AND cost_price > 0), cost_price)
-                                WHERE EXISTS (SELECT 1 FROM product_variants WHERE product_variants.product_id = products.id);
-                            """))
-                        except Exception:
-                            pass
-                    conn.commit()
-
-                # 2. Sales order items
-                if "sales_order_items" in existing_tables:
-                    item_cols = {c["name"]: c for c in inspector.get_columns("sales_order_items")}
-                    if "product_id" not in item_cols:
-                        conn.execute(text("ALTER TABLE sales_order_items ADD COLUMN product_id INTEGER;"))
-                        if "product_variants" in existing_tables:
-                            try:
-                                conn.execute(text("""
-                                    UPDATE sales_order_items SET product_id = (SELECT product_id FROM product_variants WHERE product_variants.id = sales_order_items.variant_id)
-                                    WHERE product_id IS NULL;
-                                """))
-                            except Exception:
-                                pass
-                        conn.commit()
-
-                    # Drop NOT NULL constraint on variant_info if present
-                    if "variant_info" in item_cols and not item_cols["variant_info"].get("nullable", True):
-                        conn.execute(text("PRAGMA foreign_keys=OFF;"))
-                        conn.execute(text("""
-                            CREATE TABLE sales_order_items_new (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                order_id INTEGER NOT NULL,
-                                product_id INTEGER,
-                                variant_id INTEGER,
-                                product_name VARCHAR(150) NOT NULL,
-                                variant_info VARCHAR(100) DEFAULT '',
-                                sku VARCHAR(50) NOT NULL,
-                                barcode VARCHAR(50) NOT NULL,
-                                cost_price FLOAT,
-                                unit_price FLOAT,
-                                quantity INTEGER,
-                                discount_amount FLOAT,
-                                subtotal FLOAT
-                            );
-                        """))
-                        conn.execute(text("""
-                            INSERT INTO sales_order_items_new (id, order_id, product_id, variant_id, product_name, variant_info, sku, barcode, cost_price, unit_price, quantity, discount_amount, subtotal)
-                            SELECT id, order_id, product_id, variant_id, product_name, COALESCE(variant_info, ''), sku, barcode, cost_price, unit_price, quantity, discount_amount, subtotal FROM sales_order_items;
-                        """))
-                        conn.execute(text("DROP TABLE sales_order_items;"))
-                        conn.execute(text("ALTER TABLE sales_order_items_new RENAME TO sales_order_items;"))
-                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_order_items_id ON sales_order_items (id);"))
-                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_sales_order_items_order_id ON sales_order_items (order_id);"))
-                        conn.execute(text("PRAGMA foreign_keys=ON;"))
-                        conn.commit()
-
-                # 3. Stock movements
-                if "stock_movements" in existing_tables:
-                    mov_cols = {c["name"]: c for c in inspector.get_columns("stock_movements")}
-                    if "product_id" not in mov_cols:
-                        conn.execute(text("ALTER TABLE stock_movements ADD COLUMN product_id INTEGER;"))
-                        if "product_variants" in existing_tables:
-                            try:
-                                conn.execute(text("""
-                                    UPDATE stock_movements SET product_id = (SELECT product_id FROM product_variants WHERE product_variants.id = stock_movements.variant_id)
-                                    WHERE product_id IS NULL;
-                                """))
-                            except Exception:
-                                pass
-                        conn.commit()
-
-                    # Drop NOT NULL constraint on variant_id if present
-                    if "variant_id" in mov_cols and not mov_cols["variant_id"].get("nullable", True):
-                        conn.execute(text("PRAGMA foreign_keys=OFF;"))
-                        conn.execute(text("""
-                            CREATE TABLE stock_movements_new (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                product_id INTEGER,
-                                variant_id INTEGER,
-                                user_id INTEGER,
-                                change_qty INTEGER NOT NULL,
-                                current_stock INTEGER NOT NULL,
-                                movement_type VARCHAR(30) NOT NULL,
-                                reference VARCHAR(100),
-                                note TEXT,
-                                created_at DATETIME
-                            );
-                        """))
-                        conn.execute(text("""
-                            INSERT INTO stock_movements_new (id, product_id, variant_id, user_id, change_qty, current_stock, movement_type, reference, note, created_at)
-                            SELECT id, product_id, variant_id, user_id, change_qty, current_stock, movement_type, reference, note, created_at FROM stock_movements;
-                        """))
-                        conn.execute(text("DROP TABLE stock_movements;"))
-                        conn.execute(text("ALTER TABLE stock_movements_new RENAME TO stock_movements;"))
-                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_id ON stock_movements (id);"))
-                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_product_id ON stock_movements (product_id);"))
-                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_variant_id ON stock_movements (variant_id);"))
-                        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_stock_movements_created_at ON stock_movements (created_at);"))
-                        conn.execute(text("PRAGMA foreign_keys=ON;"))
-                        conn.commit()
-
-                # 4. Return order items
-                if "return_order_items" in existing_tables:
-                    ret_cols = [c["name"] for c in inspector.get_columns("return_order_items")]
-                    if "product_id" not in ret_cols:
-                        conn.execute(text("ALTER TABLE return_order_items ADD COLUMN product_id INTEGER;"))
-                        conn.commit()
-
-                # 5. Return orders
-                if "return_orders" in existing_tables:
-                    ro_cols = [c["name"] for c in inspector.get_columns("return_orders")]
-                    if "exchange_product_id" not in ro_cols:
-                        conn.execute(text("ALTER TABLE return_orders ADD COLUMN exchange_product_id INTEGER;"))
-                        conn.commit()
-
-                # 6. Customers & Member Affiliate
-                if "customers" in existing_tables:
-                    cust_cols = [c["name"] for c in inspector.get_columns("customers")]
-                    if "member_id" not in cust_cols:
-                        conn.execute(text("ALTER TABLE customers ADD COLUMN member_id VARCHAR(30);"))
-                    if "total_commission" not in cust_cols:
-                        conn.execute(text("ALTER TABLE customers ADD COLUMN total_commission FLOAT DEFAULT 0.0;"))
-                    conn.commit()
-
-                    # Auto-assign 12-digit random alphanumeric member_id for existing customers without member_id
-                    try:
-                        import random
-                        chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-                        rows = conn.execute(text("SELECT id FROM customers WHERE member_id IS NULL OR member_id = '';")).fetchall()
-                        for r in rows:
-                            gen_id = "".join(random.choices(chars, k=12))
-                            conn.execute(text("UPDATE customers SET member_id = :mid WHERE id = :cid;"), {"mid": gen_id, "cid": r[0]})
-                        conn.commit()
-                    except Exception:
-                        pass
-
-                # 7. Affiliate Commissions table
-                if "affiliate_commissions" not in existing_tables:
-                    conn.execute(text("""
-                        CREATE TABLE affiliate_commissions (
-                            id INTEGER PRIMARY KEY AUTOINCREMENT,
-                            customer_id INTEGER NOT NULL,
-                            order_id INTEGER,
-                            amount FLOAT NOT NULL DEFAULT 0.0,
-                            notes VARCHAR(255),
-                            created_at DATETIME,
-                            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
-                            FOREIGN KEY (order_id) REFERENCES sales_orders(id) ON DELETE SET NULL
-                        );
-                    """))
-                    conn.commit()
-        except Exception as e:
-            # Table might not exist yet during initial create
-            pass
+        migrate_tenant_schema(bind)
 
     @classmethod
     def init_tenant_db(cls, tenant_slug: str):
-        """Creates all tenant tables.
-        
-        Di PostgreSQL: gunakan unpooled engine untuk DDL (CREATE TABLE) karena
-        Neon pooler (PgBouncer) tidak mendukung CREATE TABLE via startup params.
-        Search path ditetapkan via SQL SET setelah connect.
-        """
-        if is_postgres:
-            schema_name = "tenant_" + re.sub(r"[^a-zA-Z0-9_]", "_", tenant_slug.lower())
-            unpooled_url = settings.DATABASE_URL_UNPOOLED or settings.DATABASE_URL
-            tmp_engine = create_engine(unpooled_url, pool_pre_ping=True, echo=False)
-            try:
-                with tmp_engine.connect() as conn:
-                    # Validate schema_name before DDL (already validated by re.sub at line 73, but extra safety)
-                    if not re.match(r'^[a-zA-Z0-9_]+$', schema_name):
-                        raise ValueError(f"Invalid schema name: {schema_name}")
-                    conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}";'))
-                    # Use parameterized query for SET search_path
-                    conn.execute(text("SET search_path TO :schema, public"), {"schema": schema_name})
-                    conn.commit()
-                Base.metadata.create_all(bind=tmp_engine)
-            finally:
-                tmp_engine.dispose()
-            # Pastikan engine normal (pooled) terdaftar untuk query berikutnya
-            cls.get_engine(tenant_slug)
-        else:
-            engine = cls.get_engine(tenant_slug)
-            Base.metadata.create_all(bind=engine)
-            cls._run_migrations(engine)
+        cls.get_engine(tenant_slug)
 
     @classmethod
     def close_tenant(cls, tenant_slug: str):
-        """Disposes connections and clears sessionmaker for a tenant"""
-        if tenant_slug in cls._engines:
-            cls._engines[tenant_slug].dispose()
-            cls._engines.pop(tenant_slug, None)
+        with cls._lock:
+            engine = cls._engines.pop(tenant_slug, None)
             cls._sessionmakers.pop(tenant_slug, None)
+            if engine is not None:
+                engine.dispose()
+
 
 def extract_token_from_string(raw: Optional[str]) -> Optional[str]:
     if not raw:
         return None
     import urllib.parse
+
     cleaned = urllib.parse.unquote(str(raw).strip()).strip('"').strip("'")
     while cleaned.lower().startswith("bearer "):
         cleaned = cleaned[7:].strip().strip('"').strip("'")
     return cleaned if cleaned else None
 
-def get_tenant_slug_from_request(request: Request) -> Optional[str]:
-    # 1. From explicit header
-    slug = request.headers.get("X-Tenant-Slug")
-    if slug:
-        return slug
 
-    # 2. Extract JWT token from Authorization header first, then fallback to cookie
+def get_request_identity(request: Request) -> dict:
+    """Authenticate against the registry, never trust tenant/role claims alone."""
+    identity = getattr(request.state, "identity", None)
+    if identity is not None:
+        return identity
     token = extract_token_from_string(request.headers.get("Authorization"))
     if not token:
         token = extract_token_from_string(request.cookies.get("access_token"))
+    if not token:
+        raise HTTPException(status_code=401, detail="Belum terotentikasi. Silakan login terlebih dahulu.", headers={"WWW-Authenticate": "Bearer"})
+    from app.core.security import decode_access_token, TokenError, valid_auth_version
+    from app.modules.tenants.models import MasterUser
 
-    if token:
-        from app.core.security import decode_access_token
+    try:
         payload = decode_access_token(token)
-        if payload:
-            if payload.get("tenant_slug"):
-                return payload.get("tenant_slug")
-            
-            # Lookup tenant from master.db if user is logged in but token lacks slug
-            try:
-                from app.modules.tenants.models import MasterUser, Tenant
-                db = MasterSessionLocal()
-                try:
-                    user_id = payload.get("id")
-                    username = payload.get("sub")
-                    m_user = None
-                    if user_id:
-                        m_user = db.query(MasterUser).filter(MasterUser.id == user_id).first()
-                    elif username:
-                        m_user = db.query(MasterUser).filter(MasterUser.username == username).first()
-                    
-                    if m_user and m_user.tenant_id:
-                        t = db.query(Tenant).filter(Tenant.id == m_user.tenant_id).first()
-                        if t and t.slug:
-                            return t.slug
-                finally:
-                    db.close()
-            except Exception:
-                pass
+    except TokenError as exc:
+        raise HTTPException(status_code=401, detail=str(exc), headers={"WWW-Authenticate": "Bearer"}) from exc
+    username = payload.get("sub") if payload else None
+    if not isinstance(username, str) or not username.strip():
+        raise HTTPException(status_code=401, detail="Token payload tidak valid.")
+    with MasterSessionLocal() as db:
+        user = db.query(MasterUser).filter(func.lower(MasterUser.username) == username.strip().lower()).first()
+        if not user or not user.is_active or (payload.get("id") is not None and payload["id"] != user.id):
+            raise HTTPException(status_code=401, detail="Pengguna tidak aktif atau sesi tidak valid.")
+        if not valid_auth_version(payload.get("ver"), user.password_hash):
+            raise HTTPException(status_code=401, detail="Sesi login tidak berlaku lagi. Silakan login kembali.")
+        tenant = user.tenant
+        if tenant and not tenant.is_active:
+            raise HTTPException(status_code=403, detail="Toko tidak aktif.")
+        slug = tenant.slug if tenant else None
+        if payload.get("tenant_slug") is not None and payload["tenant_slug"] != slug:
+            raise HTTPException(status_code=401, detail="Konteks toko pada sesi tidak valid.")
+        if payload.get("tenant_id") is not None and payload["tenant_id"] != user.tenant_id:
+            raise HTTPException(status_code=401, detail="Konteks toko pada sesi tidak valid.")
+        identity = {
+            "sub": user.username.strip().lower(), "id": user.id, "full_name": user.full_name,
+            "role": user.role, "tenant_id": user.tenant_id, "tenant_slug": slug,
+        }
+    request.state.identity = identity
+    return identity
 
-    # Removed dangerous auto-tenant fallback to prevent cross-tenant data leaks
-    # Tenant context MUST be explicit via token or header
-    return None
+
+def get_tenant_slug_from_request(request: Request) -> Optional[str]:
+    identity = get_request_identity(request)
+    slug = identity["tenant_slug"]
+    selected_slug = request.headers.get("X-Tenant-Slug")
+    if selected_slug is not None and selected_slug.strip() != slug:
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke toko yang dipilih.")
+    return slug
+
 
 def get_db(request: Request) -> Generator[Session, None, None]:
-    """Dependency injecting tenant database session based on request user's tenant"""
     tenant_slug = get_tenant_slug_from_request(request)
     if not tenant_slug:
-        # Fallback or check if single default tenant exists
-        # In test environments or when no tenant is resolved, handle gracefully
-        raise HTTPException(
-            status_code=400,
-            detail="Konteks toko (Tenant) tidak ditemukan. Silakan login atau pilih toko."
-        )
-
+        raise HTTPException(status_code=400, detail="Konteks toko tidak ditemukan. Silakan selesaikan setup toko.")
     db = TenantManager.get_session(tenant_slug)
     try:
+        from app.modules.auth.models import User
+
+        identity = get_request_identity(request)
+        user = db.query(User).filter(func.lower(User.username) == identity["sub"]).first()
+        if user is None or not user.is_active:
+            raise HTTPException(status_code=401, detail="Pengguna toko tidak aktif atau tidak ditemukan.")
+        db.info["tenant_id"] = identity["tenant_id"]
+        request.state.current_user = user
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()

@@ -73,10 +73,9 @@ def test_setup_admin(client):
 def test_user_management_lifecycle(client, test_setup_admin):
     admin_token = test_setup_admin["token"]
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
-    cookies_admin = {"access_token": admin_token}
 
     # 1. List users (should have initial admin)
-    res = client.get("/api/auth/users", headers=admin_headers, cookies=cookies_admin)
+    res = client.get("/api/auth/users", headers=admin_headers)
     assert res.status_code == 200
     users = res.json()
     assert len(users) >= 1
@@ -93,7 +92,7 @@ def test_user_management_lifecycle(client, test_setup_admin):
         "role": "cashier",
         "password": cashier_password,
         "is_active": True
-    }, headers=admin_headers, cookies=cookies_admin)
+    }, headers=admin_headers)
     assert cashier_res.status_code == 200
     cashier_data = cashier_res.json()
     assert cashier_data["username"] == cashier_username
@@ -108,7 +107,7 @@ def test_user_management_lifecycle(client, test_setup_admin):
         "role": "admin",
         "password": "passwordadmin2",
         "is_active": True
-    }, headers=admin_headers, cookies=cookies_admin)
+    }, headers=admin_headers)
     assert admin2_res.status_code == 200
     admin2_id = admin2_res.json()["id"]
 
@@ -122,14 +121,13 @@ def test_user_management_lifecycle(client, test_setup_admin):
     assert cashier_login_data["user"]["role"] == "cashier"
     cashier_token = cashier_login_data["access_token"]
     cashier_headers = {"Authorization": f"Bearer {cashier_token}"}
-    cookies_cashier = {"access_token": cashier_token}
 
     # 5. Cashier cannot access user management endpoint
-    forbidden_res = client.get("/api/auth/users", headers=cashier_headers, cookies=cookies_cashier)
+    forbidden_res = client.get("/api/auth/users", headers=cashier_headers)
     assert forbidden_res.status_code == 403
 
     # 6. Cashier accessing backoffice page is redirected to /pos
-    redirect_res = client.get("/backoffice/users", cookies=cookies_cashier, follow_redirects=False)
+    redirect_res = client.get("/backoffice/users", follow_redirects=False)
     assert redirect_res.status_code in [302, 307]
     assert redirect_res.headers["location"] == "/pos"
 
@@ -138,20 +136,20 @@ def test_user_management_lifecycle(client, test_setup_admin):
         "full_name": "Kasir Satu Terupdate",
         "role": "cashier",
         "is_active": True
-    }, headers=admin_headers, cookies=cookies_admin)
+    }, headers=admin_headers)
     assert update_res.status_code == 200
     assert update_res.json()["full_name"] == "Kasir Satu Terupdate"
 
     # 8. Prevent admin from deleting their own account
-    self_delete_res = client.delete(f"/api/auth/users/{admin_id}", headers=admin_headers, cookies=cookies_admin)
+    self_delete_res = client.delete(f"/api/auth/users/{admin_id}", headers=admin_headers)
     assert self_delete_res.status_code == 400
     assert "tidak dapat menghapus akun Anda sendiri" in self_delete_res.json()["detail"]
 
     # 9. Delete cashier user
-    del_cashier_res = client.delete(f"/api/auth/users/{cashier_id}", headers=admin_headers, cookies=cookies_admin)
+    del_cashier_res = client.delete(f"/api/auth/users/{cashier_id}", headers=admin_headers)
     assert del_cashier_res.status_code == 200
     assert "berhasil dihapus" in del_cashier_res.json()["message"]
 
     # 10. Delete admin2 is allowed (since main admin is still active)
-    del_admin2_res = client.delete(f"/api/auth/users/{admin2_id}", headers=admin_headers, cookies=cookies_admin)
+    del_admin2_res = client.delete(f"/api/auth/users/{admin2_id}", headers=admin_headers)
     assert del_admin2_res.status_code == 200

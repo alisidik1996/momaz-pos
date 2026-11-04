@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
+from app.core.transactions import transactional
 from app.modules.shifts.models import CashierShift
 from app.modules.shifts.schemas import ShiftOpenRequest, ShiftCloseRequest, ShiftOut
 
@@ -11,6 +12,7 @@ def get_active_shift(db: Session, user_id: int) -> Optional[CashierShift]:
         CashierShift.status == "open"
     ).first()
 
+@transactional
 def open_shift(db: Session, user_id: int, req: ShiftOpenRequest) -> CashierShift:
     existing = get_active_shift(db, user_id)
     if existing:
@@ -31,10 +33,13 @@ def open_shift(db: Session, user_id: int, req: ShiftOpenRequest) -> CashierShift
     db.refresh(shift)
     return shift
 
+@transactional
 def close_shift(db: Session, shift_id: int, user_id: int, req: ShiftCloseRequest) -> CashierShift:
-    shift = db.query(CashierShift).filter(CashierShift.id == shift_id).first()
+    shift = db.query(CashierShift).filter(CashierShift.id == shift_id).populate_existing().first()
     if not shift:
         raise HTTPException(status_code=404, detail="Shift tidak ditemukan.")
+    if shift.user_id != user_id:
+        raise HTTPException(status_code=403, detail="Anda hanya dapat menutup shift Anda sendiri.")
     if shift.status == "closed":
         raise HTTPException(status_code=400, detail="Shift ini sudah ditutup sebelumnya.")
     

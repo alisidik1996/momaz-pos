@@ -10,6 +10,13 @@ let storeTaxRate = 0;
 let isTaxEnabled = false;
 let html5QrCodeScanner = null;
 let isScannerRunning = false;
+let productLoadSequence = 0;
+let paymentInProgress = false;
+let pendingPaymentMethod = "cash";
+
+function cartKey(item) {
+  return item.variant_id != null ? `variant:${item.variant_id}` : `product:${item.product_id}`;
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initShiftCheck();
@@ -150,7 +157,7 @@ async function loadCategories() {
     
     container.innerHTML = `<button class="btn btn-outline-primary active" onclick="filterCategory(null, this)">Semua Pakaian</button>`;
     cats.forEach(c => {
-      container.innerHTML += `<button class="btn btn-outline-secondary" onclick="filterCategory(${c.id}, this)">${c.name}</button>`;
+      container.innerHTML += `<button class="btn btn-outline-secondary" onclick="filterCategory(${c.id}, this)">${escapeHTML(c.name)}</button>`;
     });
   } catch (e) {
     console.error(e);
@@ -158,12 +165,15 @@ async function loadCategories() {
 }
 
 async function loadProducts(query = "", categoryId = null) {
+  const sequence = ++productLoadSequence;
   try {
     let url = "/api/catalog/products?";
     if (query) url += `q=${encodeURIComponent(query)}&`;
     if (categoryId) url += `category_id=${categoryId}&`;
     
-    currentProducts = await api.get(url);
+    const products = await api.get(url);
+    if (sequence !== productLoadSequence) return;
+    currentProducts = products;
     renderProducts(currentProducts);
   } catch (e) {
     console.error(e);
@@ -186,7 +196,7 @@ function renderProducts(products) {
     const categoryName = p.category ? p.category.name : "Umum";
 
     const imageHtml = p.image_url
-      ? `<img src="${p.image_url}" style="height: 100px; width: 100%; object-fit: cover; border-radius: 8px; margin-bottom: 0.75rem;" alt="${p.name}">`
+      ? `<img src="${escapeHTML(safeImageUrl(p.image_url))}" style="height: 100px; width: 100%; object-fit: cover; border-radius: 8px; margin-bottom: 0.75rem;" alt="${escapeHTML(p.name)}">`
       : `<div class="img-placeholder"><i class="bi bi-bag-check"></i></div>`;
 
     let priceDisplay = `<span class="price">${formatRupiah(p.base_price)}</span>`;
@@ -204,11 +214,11 @@ function renderProducts(products) {
         <div>
           ${imageHtml}
           <div class="d-flex justify-content-between align-items-center mb-1">
-            <span class="badge bg-light text-secondary border">${categoryName}</span>
+            <span class="badge bg-light text-secondary border">${escapeHTML(categoryName)}</span>
             ${p.discount_price > 0 ? '<span class="badge bg-danger">PROMO</span>' : ''}
           </div>
-          <h6 class="fw-bold mb-1 text-truncate" title="${p.name}">${p.name}</h6>
-          <div class="small text-muted mb-2"><code>${p.sku || p.barcode || '-'}</code></div>
+          <h6 class="fw-bold mb-1 text-truncate" title="${escapeHTML(p.name)}">${escapeHTML(p.name)}</h6>
+          <div class="small text-muted mb-2"><code>${escapeHTML(p.sku || p.barcode || '-')}</code></div>
         </div>
         <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
           ${priceDisplay}
@@ -237,6 +247,7 @@ function handleProductClick(productId) {
 }
 
 function addProductToCart(product) {
+  if (paymentInProgress || product.is_active === false) return;
   const stock = product.stock !== undefined ? product.stock : (product.total_stock || 0);
   if (stock <= 0) {
     posSound.error();
@@ -245,7 +256,7 @@ function addProductToCart(product) {
   }
 
   const effectivePrice = (product.discount_price && product.discount_price > 0) ? product.discount_price : product.base_price;
-  const existingIndex = cart.findIndex(c => c.product_id === product.id);
+  const existingIndex = cart.findIndex(c => cartKey(c) === `product:${product.id}`);
 
   if (existingIndex > -1) {
     if (cart[existingIndex].quantity + 1 > stock) {
@@ -253,8 +264,7 @@ function addProductToCart(product) {
       showToast(`Maksimal stok tercapai (${stock} pcs).`, "warning");
       return;
     }
-    cart[existingIndex].quantity += 1;
-    cart[existingIndex].subtotal = (cart[existingIndex].quantity * cart[existingIndex].unit_price) - cart[existingIndex].discount_amount;
+    updateCartQty(cartKey(cart[existingIndex]), 1);
   } else {
     cart.push({
       product_id: product.id,
@@ -268,7 +278,9 @@ function addProductToCart(product) {
       stock: stock,
       quantity: 1,
       discount_amount: 0,
-      subtotal: effectivePrice
+      subtotal: effectivePrice,
+      member_discount_type: product.member_discount_type,
+      member_discount_value: product.member_discount_value
     });
   }
 
@@ -284,13 +296,18 @@ function setupBarcodeScanner() {
   barcodeInput.addEventListener("keydown", async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
+      if (paymentInProgress) return;
       const code = barcodeInput.value.trim();
       if (!code) return;
 
       try {
-        const item = await api.get(`/api/catalog/scan/${code}`);
+        const item = await api.get(`/api/catalog/scan/${encodeURIComponent(code)}`);
+        if (!item.is_active || item.stock <= 0) {
+          showToast("Produk tidak aktif atau stok telah habis.", "warning");
+          return;
+        }
         const effectivePrice = item.sell_price;
-        const existingIndex = cart.findIndex(c => (item.product_id && c.product_id === item.product_id) || (item.variant_id && c.variant_id === item.variant_id));
+        const existingIndex = cart.findIndex(c => cartKey(c) === cartKey(item));
 
         if (existingIndex > -1) {
           if (cart[existingIndex].quantity + 1 > item.stock) {
@@ -298,14 +315,13 @@ function setupBarcodeScanner() {
             showToast(`Maksimal stok tercapai (${item.stock} pcs).`, "warning");
             return;
           }
-          cart[existingIndex].quantity += 1;
-          cart[existingIndex].subtotal = (cart[existingIndex].quantity * cart[existingIndex].unit_price) - cart[existingIndex].discount_amount;
+          updateCartQty(cartKey(cart[existingIndex]), 1);
         } else {
           cart.push({
             product_id: item.product_id,
             variant_id: item.variant_id,
             product_name: item.product_name,
-            variant_info: "",
+            variant_info: item.variant_id ? `${item.color} - ${item.size}` : "",
             sku: item.sku,
             barcode: item.barcode,
             unit_price: effectivePrice,
@@ -313,7 +329,9 @@ function setupBarcodeScanner() {
             stock: item.stock,
             quantity: 1,
             discount_amount: 0,
-            subtotal: effectivePrice
+            subtotal: effectivePrice,
+            member_discount_type: item.member_discount_type,
+            member_discount_value: item.member_discount_value
           });
         }
 
@@ -332,7 +350,8 @@ function setupBarcodeScanner() {
 
 // 6. Cart Management
 function updateCartQty(id, delta) {
-  const item = cart.find(c => c.product_id === id || c.variant_id === id);
+  if (paymentInProgress) return;
+  const item = cart.find(c => cartKey(c) === id);
   if (!item) return;
 
   const newQty = item.quantity + delta;
@@ -348,16 +367,22 @@ function updateCartQty(id, delta) {
   }
 
   item.quantity = newQty;
-  item.subtotal = (item.quantity * item.unit_price) - item.discount_amount;
+  if (item.member_discount_per_unit != null) {
+    item.discount_amount = roundMoney(item.member_discount_per_unit * newQty);
+  }
+  item.discount_amount = Math.min(item.discount_amount || 0, item.unit_price * newQty);
+  item.subtotal = roundMoney((item.quantity * item.unit_price) - item.discount_amount);
   renderCart();
 }
 
 function removeCartItem(id) {
-  cart = cart.filter(c => c.product_id !== id && c.variant_id !== id);
+  if (paymentInProgress) return;
+  cart = cart.filter(c => cartKey(c) !== id);
   renderCart();
 }
 
 async function clearCart() {
+  if (paymentInProgress) return;
   if (cart.length === 0) return;
   const ok = await showAppConfirm("Apakah Anda yakin ingin mengosongkan seluruh keranjang belanja kasir?", "Kosongkan Keranjang", {
     confirmText: "Ya, Kosongkan",
@@ -391,14 +416,14 @@ function renderCart() {
   }
 
   container.innerHTML = cart.map(item => {
-    const itemId = item.product_id || item.variant_id;
+    const itemId = jsonForAttribute(cartKey(item));
     return `
       <div class="cart-item">
         <div style="flex: 1; padding-right: 0.5rem;">
-          <div class="fw-bold text-dark text-truncate" title="${item.product_name}">${item.product_name}</div>
+          <div class="fw-bold text-dark text-truncate" title="${escapeHTML(item.product_name)}">${escapeHTML(item.product_name)}</div>
           <div class="small text-muted d-flex gap-2 align-items-center">
             <span>${formatRupiah(item.unit_price)}</span>
-            <small class="text-secondary"><code>${item.sku}</code></small>
+            <small class="text-secondary"><code>${escapeHTML(item.sku)}</code></small>
             ${item.discount_amount > 0 ? `<span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.7rem;">Hemat ${formatRupiah(item.discount_amount)}</span>` : ''}
           </div>
         </div>
@@ -416,8 +441,8 @@ function renderCart() {
   }).join("");
 
   const subtotal = cart.reduce((sum, it) => sum + it.subtotal, 0);
-  const taxAmount = isTaxEnabled ? Math.round((subtotal - orderDiscount) * (storeTaxRate / 100)) : 0;
-  const grandTotal = Math.max(0, subtotal - orderDiscount + taxAmount);
+  const taxAmount = isTaxEnabled ? roundMoney(Math.max(0, subtotal - orderDiscount) * (storeTaxRate / 100)) : 0;
+  const grandTotal = roundMoney(Math.max(0, subtotal - orderDiscount + taxAmount));
 
   updateCartTotals(subtotal, taxAmount, grandTotal);
 }
@@ -452,7 +477,7 @@ async function loadCustomersList() {
     
     select.innerHTML = `<option value="">Pelanggan Umum (Tanpa Member)</option>`;
     customers.forEach(c => {
-      select.innerHTML += `<option value="${c.id}">${c.name} (${c.phone || '-'})</option>`;
+      select.innerHTML += `<option value="${c.id}">${escapeHTML(c.name)} (${escapeHTML(c.phone || '-')})</option>`;
     });
   } catch (e) {
     console.error(e);
@@ -462,14 +487,15 @@ async function loadCustomersList() {
 function handleCustomerChange(el) {
   const custId = parseInt(el.value);
   currentCustomer = custId ? custId : null;
-  if (!currentCustomer) {
+  if (!activeMember || activeMember.id !== currentCustomer) {
     activeMember = null;
     revertCartItemDiscounts();
   }
 }
 
 // 8. Member Confirmation & Barcode/Camera Scanner
-function initiateCheckoutFlow() {
+function initiateCheckoutFlow(method = "cash") {
+  pendingPaymentMethod = method;
   if (cart.length === 0) {
     showToast("Keranjang belanja masih kosong.", "warning");
     return;
@@ -592,10 +618,10 @@ async function searchMemberManual() {
       resultContainer.innerHTML = `
         <div class="alert alert-success d-flex justify-content-between align-items-center mb-0 p-2">
           <div>
-            <strong>${member.name}</strong> (${member.phone || '-'})<br>
-            <small class="font-monospace text-muted">ID: ${member.member_id || '-'}</small>
+            <strong>${escapeHTML(member.name)}</strong> (${escapeHTML(member.phone || '-')})<br>
+            <small class="font-monospace text-muted">ID: ${escapeHTML(member.member_id || '-')}</small>
           </div>
-          <button type="button" class="btn btn-sm btn-success fw-bold" onclick='selectMemberForCheckout(${JSON.stringify(member)})'>
+          <button type="button" class="btn btn-sm btn-success fw-bold" onclick="selectMemberForCheckout(${jsonForAttribute(member)})">
             <i class="bi bi-check-lg"></i> Pilih Member Ini
           </button>
         </div>
@@ -604,7 +630,7 @@ async function searchMemberManual() {
       resultContainer.innerHTML = `<div class="text-danger small py-1"><i class="bi bi-exclamation-circle me-1"></i>Member dengan nomor HP atau ID tersebut tidak ditemukan.</div>`;
     }
   } catch (err) {
-    resultContainer.innerHTML = `<div class="text-danger small py-1">${err.message}</div>`;
+    resultContainer.innerHTML = `<div class="text-danger small py-1">${escapeHTML(err.message)}</div>`;
   }
 }
 
@@ -645,11 +671,11 @@ function cancelSelectedMember() {
 function calculateMemberDiscountSavings(member) {
   let totalSavings = 0;
   cart.forEach(item => {
-    const prod = currentProducts.find(p => p.id === item.product_id);
+    const prod = item.member_discount_value != null ? item : currentProducts.find(p => p.id === item.product_id);
     if (prod && prod.member_discount_value > 0) {
       let discPerItem = 0;
       if (prod.member_discount_type === "percent") {
-        discPerItem = Math.round(item.unit_price * (prod.member_discount_value / 100));
+        discPerItem = Math.min(item.unit_price, Math.round(item.unit_price * (prod.member_discount_value / 100)));
       } else {
         discPerItem = Math.min(item.unit_price, prod.member_discount_value);
       }
@@ -661,15 +687,16 @@ function calculateMemberDiscountSavings(member) {
 
 function applyMemberDiscountToCart(member) {
   cart.forEach(item => {
-    const prod = currentProducts.find(p => p.id === item.product_id);
+    const prod = item.member_discount_value != null ? item : currentProducts.find(p => p.id === item.product_id);
     if (prod && prod.member_discount_value > 0) {
       let discPerItem = 0;
       if (prod.member_discount_type === "percent") {
-        discPerItem = Math.round(item.unit_price * (prod.member_discount_value / 100));
+        discPerItem = Math.min(item.unit_price, Math.round(item.unit_price * (prod.member_discount_value / 100)));
       } else {
         discPerItem = Math.min(item.unit_price, prod.member_discount_value);
       }
       item.discount_amount = discPerItem * item.quantity;
+      item.member_discount_per_unit = discPerItem;
       item.subtotal = (item.unit_price * item.quantity) - item.discount_amount;
     }
   });
@@ -679,6 +706,7 @@ function applyMemberDiscountToCart(member) {
 function revertCartItemDiscounts() {
   cart.forEach(item => {
     item.discount_amount = 0;
+    item.member_discount_per_unit = 0;
     item.subtotal = item.unit_price * item.quantity;
   });
   renderCart();
@@ -689,14 +717,14 @@ async function proceedToPaymentWithMember() {
   await stopMemberCameraScanner();
   applyMemberDiscountToCart(activeMember);
   bootstrap.Modal.getOrCreateInstance(document.getElementById("memberCheckModal")).hide();
-  openPaymentModal("cash");
+  openPaymentModal(pendingPaymentMethod);
 }
 
 async function continueWithoutMember() {
   await stopMemberCameraScanner();
   cancelSelectedMember();
   bootstrap.Modal.getOrCreateInstance(document.getElementById("memberCheckModal")).hide();
-  openPaymentModal("cash");
+  openPaymentModal(pendingPaymentMethod);
 }
 
 // 9. Payment Modal & Execution
@@ -712,8 +740,8 @@ function openPaymentModal(defaultMethod = "cash") {
   }
 
   const subtotal = cart.reduce((sum, it) => sum + it.subtotal, 0);
-  const taxAmount = isTaxEnabled ? Math.round((subtotal - orderDiscount) * (storeTaxRate / 100)) : 0;
-  const grandTotal = Math.max(0, subtotal - orderDiscount + taxAmount);
+  const taxAmount = isTaxEnabled ? roundMoney(Math.max(0, subtotal - orderDiscount) * (storeTaxRate / 100)) : 0;
+  const grandTotal = roundMoney(Math.max(0, subtotal - orderDiscount + taxAmount));
 
   document.getElementById("pay-modal-total").innerText = formatRupiah(grandTotal);
   document.getElementById("pay-modal-grandtotal-raw").value = grandTotal;
@@ -778,6 +806,7 @@ function calculateChange() {
 }
 
 async function executePayment() {
+  if (paymentInProgress || cart.length === 0) return;
   const grandTotal = parseFloat(document.getElementById("pay-modal-grandtotal-raw").value) || 0;
   const amountPaid = parseFloat(document.getElementById("pay-amount-paid").value) || 0;
   const method = document.getElementById("selected-payment-method").value;
@@ -789,6 +818,9 @@ async function executePayment() {
     return;
   }
 
+  paymentInProgress = true;
+  const payButton = document.getElementById("btn-execute-payment");
+  if (payButton) payButton.disabled = true;
   const payload = {
     shift_id: currentShift ? currentShift.id : null,
     customer_id: currentCustomer,
@@ -830,6 +862,9 @@ async function executePayment() {
   } catch (err) {
     posSound.error();
     showToast(err.message, "error");
+  } finally {
+    paymentInProgress = false;
+    if (payButton) payButton.disabled = false;
   }
 }
 
@@ -842,16 +877,16 @@ async function openReceiptModal(orderId) {
     container.innerHTML = `
       <div class="receipt-container">
         <div class="receipt-header">
-          <h4>${receipt.store_name}</h4>
-          <p>${receipt.store_tagline}</p>
-          <p>${receipt.store_address}</p>
-          <p>Telp: ${receipt.store_phone}</p>
+          <h4>${escapeHTML(receipt.store_name)}</h4>
+          <p>${escapeHTML(receipt.store_tagline)}</p>
+          <p>${escapeHTML(receipt.store_address)}</p>
+          <p>Telp: ${escapeHTML(receipt.store_phone)}</p>
         </div>
         <div class="receipt-divider"></div>
         <div class="receipt-meta">
-          <div><span>No: ${receipt.invoice_number}</span><span>${receipt.date_str}</span></div>
-          <div><span>Kasir: ${receipt.cashier_name}</span><span>Plg: ${receipt.customer_name || 'Umum'}</span></div>
-          ${receipt.customer_member_id ? `<div><span>Member ID:</span><span><code>${receipt.customer_member_id}</code></span></div>` : ''}
+          <div><span>No: ${escapeHTML(receipt.invoice_number)}</span><span>${receipt.created_at ? formatDate(receipt.created_at) : escapeHTML(receipt.date_str)}</span></div>
+          <div><span>Kasir: ${escapeHTML(receipt.cashier_name)}</span><span>Plg: ${escapeHTML(receipt.customer_name || 'Umum')}</span></div>
+          ${receipt.customer_member_id ? `<div><span>Member ID:</span><span><code>${escapeHTML(receipt.customer_member_id)}</code></span></div>` : ''}
         </div>
         <div class="receipt-divider"></div>
         <table class="receipt-table">
@@ -862,8 +897,8 @@ async function openReceiptModal(orderId) {
             ${receipt.items.map(it => `
               <tr>
                 <td>
-                  <div class="receipt-item-title">${it.product_name}</div>
-                  <div class="receipt-item-sub">${it.variant_info} (${it.quantity}x @${formatRupiah(it.unit_price)})</div>
+                  <div class="receipt-item-title">${escapeHTML(it.product_name)}</div>
+                  <div class="receipt-item-sub">${escapeHTML(it.variant_info)} (${it.quantity}x @${formatRupiah(it.unit_price)})</div>
                 </td>
                 <td style="text-align:right; font-weight:bold;">${formatRupiah(it.subtotal)}</td>
               </tr>
@@ -876,12 +911,12 @@ async function openReceiptModal(orderId) {
           ${receipt.discount_amount > 0 ? `<div class="receipt-summary-row"><span>Diskon:</span><span>-${formatRupiah(receipt.discount_amount)}</span></div>` : ''}
           ${receipt.tax_amount > 0 ? `<div class="receipt-summary-row"><span>PPN:</span><span>${formatRupiah(receipt.tax_amount)}</span></div>` : ''}
           <div class="receipt-summary-row bold"><span>TOTAL:</span><span>${formatRupiah(receipt.total_amount)}</span></div>
-          <div class="receipt-summary-row"><span>Bayar (${receipt.payment_method}):</span><span>${formatRupiah(receipt.amount_paid)}</span></div>
+          <div class="receipt-summary-row"><span>Bayar (${escapeHTML(receipt.payment_method)}):</span><span>${formatRupiah(receipt.amount_paid)}</span></div>
           <div class="receipt-summary-row"><span>Kembalian:</span><span>${formatRupiah(receipt.change_amount)}</span></div>
         </div>
         <div class="receipt-divider"></div>
         <div class="receipt-footer">
-          ${receipt.receipt_footer}
+          ${escapeHTML(receipt.receipt_footer)}
         </div>
       </div>
     `;
@@ -912,10 +947,10 @@ function setupKeyboardShortcuts() {
       document.getElementById("barcode-scanner-input").select();
     } else if (e.key === "F8") {
       e.preventDefault();
-      if (openModals.length === 0) initiateCheckoutFlow();
+      if (openModals.length === 0) initiateCheckoutFlow("cash");
     } else if (e.key === "F9") {
       e.preventDefault();
-      if (openModals.length === 0) initiateCheckoutFlow();
+      if (openModals.length === 0) initiateCheckoutFlow("qris");
     }
   });
 

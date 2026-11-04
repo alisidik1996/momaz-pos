@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Response, HTTPException, Request
 from sqlalchemy.orm import Session
-from app.database import get_master_db
-from app.core.security import create_access_token, decode_access_token
+from app.database import get_master_db, get_request_identity
+from app.core.security import create_access_token, set_auth_cookie, auth_version
 from app.modules.tenants.schemas import (
-    AdminRegisterRequest, TenantSetupRequest, TenantOut, MasterUserOut
+    AdminRegisterRequest, TenantSetupRequest
 )
 from app.modules.tenants.models import MasterUser
 from app.modules.tenants import service
@@ -11,20 +11,8 @@ from app.modules.tenants import service
 router = APIRouter(prefix="/api/tenants", tags=["Multi-Tenant Store Management"])
 
 def get_current_master_user(request: Request, master_db: Session = Depends(get_master_db)) -> MasterUser:
-    from app.database import extract_token_from_string
-    token = extract_token_from_string(request.headers.get("Authorization"))
-    if not token:
-        token = extract_token_from_string(request.cookies.get("access_token"))
-
-    if not token:
-        raise HTTPException(status_code=401, detail="Sesi login tidak ditemukan. Silakan login terlebih dahulu.")
-
-    payload = decode_access_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Sesi kedaluwarsa atau tidak valid.")
-
-    username = payload.get("sub")
-    user = service.get_master_user_by_username(master_db, username)
+    identity = get_request_identity(request)
+    user = master_db.get(MasterUser, identity["id"])
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="Pengguna tidak aktif atau tidak ditemukan.")
 
@@ -34,6 +22,7 @@ def get_current_master_user(request: Request, master_db: Session = Depends(get_m
 def register_new_admin(
     req: AdminRegisterRequest,
     response: Response,
+    request: Request,
     master_db: Session = Depends(get_master_db)
 ):
     admin = service.register_admin(master_db, req)
@@ -44,17 +33,11 @@ def register_new_admin(
         "role": admin.role,
         "id": admin.id,
         "tenant_id": None,
-        "tenant_slug": None
+        "tenant_slug": None,
+        "ver": auth_version(admin.password_hash),
     })
 
-    response.set_cookie(
-        key="access_token",
-        value=f"Bearer {token}",
-        httponly=True,  # XSS protection
-        max_age=86400 * 7,
-        samesite="lax",
-        secure=True  # HTTPS only in production
-    )
+    set_auth_cookie(response, request, token)
 
     return {
         "status": "success",
@@ -105,18 +88,13 @@ def get_tenant_status(
 def initialize_tenant_store(
     req: TenantSetupRequest,
     response: Response,
+    request: Request,
     master_user: MasterUser = Depends(get_current_master_user),
     master_db: Session = Depends(get_master_db)
 ):
     tenant, new_token = service.setup_tenant_database(master_db, master_user, req)
 
-    response.set_cookie(
-        key="access_token",
-        value=f"Bearer {new_token}",
-        httponly=False,
-        max_age=86400 * 7,
-        samesite="lax"
-    )
+    set_auth_cookie(response, request, new_token)
 
     return {
         "status": "success",

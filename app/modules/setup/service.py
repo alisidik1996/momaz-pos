@@ -1,7 +1,7 @@
 from typing import Tuple
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from app.core.security import hash_password, create_access_token
+from app.core.security import hash_password, create_access_token, auth_version
 from app.core.models import StoreSettings
 from app.modules.auth.models import User
 from app.modules.catalog.models import Category, Brand
@@ -75,5 +75,5 @@ def initialize_system(db: Session, req: SetupInitRequest) -> Tuple[User, str]:
     db.refresh(admin)
 
     # Generate JWT token for auto-login
-    token = create_access_token(data={"sub": admin.username, "role": admin.role, "id": admin.id})
+    token = create_access_token(data={"sub": admin.username, "role": admin.role, "id": admin.id, "ver": auth_version(admin.password_hash)})
     return admin, token

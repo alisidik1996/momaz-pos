@@ -488,13 +488,13 @@
       if (cats.length === 0) {
         catSelect.innerHTML = `<option value="">(Belum ada kategori)</option>`;
       } else {
-        catSelect.innerHTML = cats.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+        catSelect.innerHTML = cats.map(c => `<option value="${c.id}">${escapeHTML(c.name)}</option>`).join("");
       }
 
       if (brands.length === 0) {
         brandSelect.innerHTML = `<option value="">(Belum ada brand)</option>`;
       } else {
-        brandSelect.innerHTML = brands.map(b => `<option value="${b.id}">${b.name}</option>`).join("");
+        brandSelect.innerHTML = brands.map(b => `<option value="${b.id}">${escapeHTML(b.name)}</option>`).join("");
       }
     } catch (e) {
       console.error(e);
@@ -517,8 +517,8 @@
       }
       tbody.innerHTML = cats.map(c => `
         <tr>
-          <td class="fw-bold">${c.name}</td>
-          <td><code>${c.slug}</code></td>
+          <td class="fw-bold">${escapeHTML(c.name)}</td>
+          <td><code>${escapeHTML(c.slug)}</code></td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-danger" onclick="deleteCategory(${c.id})">
               <i class="bi bi-trash"></i>
@@ -545,7 +545,7 @@
       }
       tbody.innerHTML = brands.map(b => `
         <tr>
-          <td class="fw-bold">${b.name}</td>
+          <td class="fw-bold">${escapeHTML(b.name)}</td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-danger" onclick="deleteBrand(${b.id})">
               <i class="bi bi-trash"></i>
@@ -648,14 +648,10 @@
     const formData = new FormData();
     formData.append("file", file);
 
-    const uploadHeaders = {};
-    const token = api.getToken();
-    if (token) uploadHeaders["Authorization"] = token;
-
     try {
       const response = await fetch("/api/catalog/upload-image", {
         method: "POST",
-        headers: uploadHeaders,
+        credentials: "same-origin",
         body: formData
       });
       const data = await response.json();
@@ -747,11 +743,7 @@
 
   async function downloadImportTemplate() {
     try {
-      const headers = {};
-      const token = api.getToken();
-      if (token) headers["Authorization"] = token;
-
-      const res = await fetch("/api/catalog/import-template", { headers });
+      const res = await fetch("/api/catalog/import-template", { credentials: "same-origin" });
       if (!res.ok) throw new Error("Gagal mengunduh template CSV.");
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -770,11 +762,7 @@
   async function exportProductsCsv() {
     try {
       showToast("Sedang menyiapkan data ekspor katalog...", "info");
-      const headers = {};
-      const token = api.getToken();
-      if (token) headers["Authorization"] = token;
-
-      const res = await fetch("/api/catalog/export-csv", { headers });
+      const res = await fetch("/api/catalog/export-csv", { credentials: "same-origin" });
       if (!res.ok) throw new Error("Gagal mengekspor data produk.");
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
@@ -808,14 +796,10 @@
     const formData = new FormData();
     formData.append("file", file);
 
-    const headers = {};
-    const token = api.getToken();
-    if (token) headers["Authorization"] = token;
-
     try {
       const response = await fetch("/api/catalog/import-csv", {
         method: "POST",
-        headers: headers,
+        credentials: "same-origin",
         body: formData
       });
       const data = await response.json();
@@ -843,7 +827,7 @@
         ${data.errors && data.errors.length > 0 ? `
           <div class="mt-2 text-danger small">
             <strong>Catatan / Kendala (${data.errors.length} baris):</strong>
-            <ul class="ps-3 mb-0">${data.errors.map(err => `<li>${err}</li>`).join('')}</ul>
+            <ul class="ps-3 mb-0">${data.errors.map(err => `<li>${escapeHTML(err)}</li>`).join('')}</ul>
           </div>
         ` : ''}
       `;
@@ -854,7 +838,7 @@
       showToast(err.message, "error");
       resultBox.className = "p-3 rounded border mb-3 bg-danger-subtle text-danger";
       resultBox.style.display = "block";
-      resultBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${err.message}`;
+      resultBox.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-1"></i> ${escapeHTML(err.message)}`;
     } finally {
       btn.disabled = false;
       btn.innerHTML = `<i class="bi bi-upload me-1"></i> Mulai Impor Produk`;
@@ -916,10 +900,10 @@
       const brandSelect = document.getElementById("edit-prod-brand");
 
       catSelect.innerHTML = `<option value="">(Tanpa Kategori)</option>` + 
-        cats.map(c => `<option value="${c.id}" ${c.id === currentCatId ? 'selected' : ''}>${c.name}</option>`).join("");
+        cats.map(c => `<option value="${c.id}" ${c.id === currentCatId ? 'selected' : ''}>${escapeHTML(c.name)}</option>`).join("");
 
       brandSelect.innerHTML = `<option value="">(Tanpa Brand)</option>` + 
-        brands.map(b => `<option value="${b.id}" ${b.id === currentBrandId ? 'selected' : ''}>${b.name}</option>`).join("");
+        brands.map(b => `<option value="${b.id}" ${b.id === currentBrandId ? 'selected' : ''}>${escapeHTML(b.name)}</option>`).join("");
     } catch (e) {
       console.error("Error populating edit dropdowns:", e);
     }
@@ -943,14 +927,10 @@
     const formData = new FormData();
     formData.append("file", file);
 
-    const uploadHeaders = {};
-    const token = api.getToken();
-    if (token) uploadHeaders["Authorization"] = token;
-
     try {
       const response = await fetch("/api/catalog/upload-image", {
         method: "POST",
-        headers: uploadHeaders,
+        credentials: "same-origin",
         body: formData
       });
       const data = await response.json();

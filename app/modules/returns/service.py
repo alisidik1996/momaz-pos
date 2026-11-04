@@ -1,23 +1,67 @@
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
+from sqlalchemy import func, update
 from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
+from app.core.transactions import generate_document_number, transactional
 from app.modules.returns.models import ReturnOrder, ReturnOrderItem
-from app.modules.sales.models import SalesOrder, SalesOrderItem
+from app.modules.sales.models import SalesOrder
 from app.modules.catalog.models import Product, ProductVariant
-from app.modules.inventory.service import record_stock_movement
+from app.modules.inventory.service import get_stock_item, record_stock_movement
 from app.modules.shifts.service import get_active_shift
+from app.modules.customers.models import Customer, AffiliateCommission
 from app.core.models import StoreSettings
 from app.modules.returns.schemas import ReturnCreateRequest, ReturnOrderOut, ReturnItemOut
 
 def generate_return_number(db: Session) -> str:
-    today_str = datetime.now().strftime("%Y%m%d")
-    count_today = db.query(ReturnOrder).filter(
-        ReturnOrder.return_number.like(f"RET-{today_str}-%")
-    ).count()
-    seq = str(count_today + 1).zfill(4)
-    return f"RET-{today_str}-{seq}"
+    return generate_document_number(db, ReturnOrder.return_number, "RET")
 
+def _item_key(product_id, variant_id):
+    return ("variant", variant_id) if variant_id is not None else ("product", product_id)
+
+
+def _validate_return_items(db: Session, order: SalesOrder, req: ReturnCreateRequest):
+    purchased = {}
+    ratio = order.total_amount / order.subtotal if order.subtotal > 0 else 0.0
+    for item in order.items:
+        key = _item_key(item.product_id, item.variant_id)
+        entry = purchased.setdefault(key, {"quantity": 0, "amount": 0.0})
+        entry["quantity"] += item.quantity
+        entry["amount"] += item.subtotal * ratio
+
+    previous = {}
+    returned_items = db.query(ReturnOrderItem).join(ReturnOrder).filter(ReturnOrder.order_id == order.id).all()
+    for item in returned_items:
+        key = _item_key(item.product_id, item.variant_id)
+        entry = previous.setdefault(key, {"quantity": 0, "amount": 0.0})
+        entry["quantity"] += item.quantity
+        entry["amount"] += item.refund_subtotal
+
+    requested = {}
+    for item in req.items:
+        key = _item_key(item.product_id, item.variant_id)
+        if key not in purchased:
+            raise HTTPException(status_code=400, detail="Barang retur tidak terdapat pada invoice asal.")
+        get_stock_item(db, item.product_id, item.variant_id)
+        entry = requested.setdefault(key, {"quantity": 0, "amount": 0.0})
+        entry["quantity"] += item.quantity
+        entry["amount"] += item.refund_subtotal
+
+    for key, request in requested.items():
+        bought = purchased[key]
+        returned = previous.get(key, {"quantity": 0, "amount": 0.0})
+        if request["quantity"] + returned["quantity"] > bought["quantity"]:
+            raise HTTPException(status_code=400, detail="Jumlah retur melebihi jumlah pembelian yang belum diretur.")
+        remaining_quantity = bought["quantity"] - returned["quantity"]
+        remaining_amount = bought["amount"] - returned["amount"]
+        max_refund = remaining_amount if request["quantity"] == remaining_quantity else min(
+            remaining_amount, bought["amount"] * request["quantity"] / bought["quantity"],
+        )
+        if request["amount"] > round(max_refund, 2) + 0.000001:
+            raise HTTPException(status_code=400, detail="Pengembalian dana melebihi nilai barang yang dibayar.")
+
+
+@transactional
 def process_return_exchange(
     db: Session,
     req: ReturnCreateRequest,
@@ -26,6 +70,9 @@ def process_return_exchange(
     order = db.query(SalesOrder).filter(SalesOrder.id == req.order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Nomor order / invoice tidak ditemukan.")
+    if order.status != "completed":
+        raise HTTPException(status_code=400, detail="Hanya transaksi selesai yang dapat diretur.")
+    _validate_return_items(db, order, req)
         
     settings = db.query(StoreSettings).first()
     policy_days = settings.return_policy_days if settings else 3
@@ -49,10 +96,12 @@ def process_return_exchange(
     exchange_prod = None
     exchange_var = None
 
-    if req.exchange_product_id:
+    if req.exchange_product_id and not req.exchange_variant_id:
         exchange_prod = db.query(Product).filter(Product.id == req.exchange_product_id).first()
         if not exchange_prod:
             raise HTTPException(status_code=404, detail="Produk tukar tidak ditemukan.")
+        if not exchange_prod.is_active:
+            raise HTTPException(status_code=400, detail="Produk tukar tidak aktif.")
         if (exchange_prod.stock or 0) <= 0:
             raise HTTPException(status_code=400, detail=f"Stok untuk produk tukar ({exchange_prod.name}) habis.")
         exchange_price = exchange_prod.discount_price if (exchange_prod.discount_price and exchange_prod.discount_price > 0) else exchange_prod.base_price
@@ -66,6 +115,10 @@ def process_return_exchange(
         exchange_var = db.query(ProductVariant).filter(ProductVariant.id == req.exchange_variant_id).first()
         if not exchange_var:
             raise HTTPException(status_code=404, detail="Varian tukar tidak ditemukan.")
+        if req.exchange_product_id is not None and exchange_var.product_id != req.exchange_product_id:
+            raise HTTPException(status_code=400, detail="Varian tukar bukan milik produk yang dipilih.")
+        if not exchange_var.is_active or not exchange_var.product.is_active:
+            raise HTTPException(status_code=400, detail="Produk atau varian tukar tidak aktif.")
         if exchange_var.stock <= 0:
             raise HTTPException(status_code=400, detail=f"Stok untuk varian tukar ({exchange_var.sku}) habis.")
             
@@ -103,7 +156,7 @@ def process_return_exchange(
         )
         db.add(roi)
         
-        if item_req.product_id:
+        if item_req.product_id and not item_req.variant_id:
             record_stock_movement(
                 db=db,
                 product_id=item_req.product_id,
@@ -148,22 +201,63 @@ def process_return_exchange(
         
     # Update active shift if cash refund occurred
     shift = get_active_shift(db, cashier_id)
-    if shift and total_refund > 0:
+    if shift:
         shift.total_refunds += total_refund
+        shift.total_sales_cash += additional_charge
+        shift.ending_cash_expected = shift.starting_cash + shift.total_sales_cash - shift.total_refunds
+
+    if order.customer_id is not None:
+        db.execute(update(Customer).where(Customer.id == order.customer_id).values(
+            total_spend=func.coalesce(Customer.total_spend, 0) + additional_charge - total_refund,
+        ))
+        db.flush()
+        commissions = db.query(AffiliateCommission).filter_by(order_id=order.id, customer_id=order.customer_id).all()
+        original_commission = sum(record.amount for record in commissions if record.amount > 0)
+        already_reversed = -sum(record.amount for record in commissions if record.amount < 0)
+        if original_commission > 0:
+            previous_items = db.query(ReturnOrderItem).join(ReturnOrder).filter(ReturnOrder.order_id == order.id).all()
+            if all(item.affiliate_commission_amount is not None for item in order.items):
+                returned_quantities = {}
+                for item in previous_items:
+                    key = _item_key(item.product_id, item.variant_id)
+                    returned_quantities[key] = returned_quantities.get(key, 0) + item.quantity
+                purchased = {}
+                for item in order.items:
+                    key = _item_key(item.product_id, item.variant_id)
+                    data = purchased.setdefault(key, {"quantity": 0, "commission": 0.0})
+                    data["quantity"] += item.quantity
+                    data["commission"] += item.affiliate_commission_amount
+                target_reversal = sum(
+                    data["commission"] * min(returned_quantities.get(key, 0), data["quantity"]) / data["quantity"]
+                    for key, data in purchased.items()
+                )
+            else:
+                # Legacy invoices have no per-item commission allocation.
+                returned_value = sum(item.refund_subtotal for item in previous_items)
+                target_reversal = original_commission * min(returned_value / order.total_amount, 1) if order.total_amount > 0 else original_commission
+            reversal = min(round(target_reversal - already_reversed, 2), original_commission - already_reversed)
+            if reversal > 0:
+                db.execute(update(Customer).where(Customer.id == order.customer_id).values(
+                    total_commission=func.coalesce(Customer.total_commission, 0) - reversal,
+                ))
+                db.add(AffiliateCommission(customer_id=order.customer_id, order_id=order.id, amount=-reversal, notes=f"Pembatalan komisi retur {ret_number}"))
         
     db.commit()
     db.refresh(return_order)
     return return_order
 
-def get_return_orders(db: Session, limit: int = 50) -> List[ReturnOrderOut]:
-    returns = db.query(ReturnOrder).options(
+def get_return_orders(db: Session, limit: int = 50, return_id: Optional[int] = None) -> List[ReturnOrderOut]:
+    query = db.query(ReturnOrder).options(
         joinedload(ReturnOrder.order),
         joinedload(ReturnOrder.cashier),
         joinedload(ReturnOrder.exchange_product),
         joinedload(ReturnOrder.exchange_variant).joinedload(ProductVariant.product),
         joinedload(ReturnOrder.items).joinedload(ReturnOrderItem.product),
         joinedload(ReturnOrder.items).joinedload(ReturnOrderItem.variant).joinedload(ProductVariant.product)
-    ).order_by(ReturnOrder.id.desc()).limit(limit).all()
+    )
+    if return_id is not None:
+        query = query.filter(ReturnOrder.id == return_id)
+    returns = query.order_by(ReturnOrder.id.desc()).limit(limit).all()
     
     output = []
     for r in returns:
@@ -172,13 +266,13 @@ def get_return_orders(db: Session, limit: int = 50) -> List[ReturnOrderOut]:
             prod_name = None
             var_info = None
             sku_val = "-"
-            if i.product:
-                prod_name = i.product.name
-                sku_val = i.product.sku or "-"
-            elif i.variant:
+            if i.variant:
                 prod_name = i.variant.product.name if i.variant.product else "-"
                 var_info = f"{i.variant.color} - {i.variant.size}"
                 sku_val = i.variant.sku or "-"
+            elif i.product:
+                prod_name = i.product.name
+                sku_val = i.product.sku or "-"
 
             items_out.append(ReturnItemOut(
                 id=i.id,
@@ -193,11 +287,11 @@ def get_return_orders(db: Session, limit: int = 50) -> List[ReturnOrderOut]:
             
         ex_prod_name = None
         ex_info = None
-        if r.exchange_product:
-            ex_prod_name = r.exchange_product.name
-        elif r.exchange_variant and r.exchange_variant.product:
+        if r.exchange_variant and r.exchange_variant.product:
             ex_prod_name = r.exchange_variant.product.name
             ex_info = f"{r.exchange_variant.product.name} ({r.exchange_variant.color} - {r.exchange_variant.size})"
+        elif r.exchange_product:
+            ex_prod_name = r.exchange_product.name
             
         output.append(ReturnOrderOut(
             id=r.id,

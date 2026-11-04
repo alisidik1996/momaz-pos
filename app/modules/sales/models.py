@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime, JSON
+from sqlalchemy import Column, Integer, String, Float, Text, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from app.database import Base
@@ -49,6 +49,7 @@ class SalesOrderItem(Base):
     quantity = Column(Integer, default=1)
     discount_amount = Column(Float, default=0.0)
     subtotal = Column(Float, default=0.0) # (unit_price * qty) - discount_amount
+    affiliate_commission_amount = Column(Float, default=0.0, nullable=True)
     
     order = relationship("SalesOrder", back_populates="items")
     product = relationship("Product")

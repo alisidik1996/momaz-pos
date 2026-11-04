@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from app.database import get_db
 from app.modules.auth.service import get_current_user
 from app.modules.auth.models import User
@@ -40,6 +40,21 @@ def get_order(
 ):
     order = service.get_order_by_id(db, order_id)
     if not order:
+        raise HTTPException(status_code=404, detail="Order tidak ditemukan.")
+    out = SalesOrderOut.model_validate(order)
+    out.cashier_name = order.cashier.full_name if order.cashier else "Kasir"
+    out.customer_name = order.customer.name if order.customer else "Umum"
+    return out
+
+
+@router.get("/orders/by-invoice/{invoice_number:path}", response_model=SalesOrderOut)
+def get_order_by_invoice(
+    invoice_number: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    order = service.get_order_by_invoice(db, invoice_number.strip())
+    if order is None:
         raise HTTPException(status_code=404, detail="Order tidak ditemukan.")
     out = SalesOrderOut.model_validate(order)
     out.cashier_name = order.cashier.full_name if order.cashier else "Kasir"
