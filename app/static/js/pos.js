@@ -28,6 +28,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupBarcodeScanner();
 });
 
+// Handle browser back/forward cache (bfcache) - re-check shift when page restored
+window.addEventListener("pageshow", async (event) => {
+  if (event.persisted) {
+    await initShiftCheck();
+  }
+});
+
 // 1. Shift Management
 async function initShiftCheck() {
   try {
