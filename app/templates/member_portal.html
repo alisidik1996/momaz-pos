@@ -135,7 +135,7 @@
         </div>
 
         <div class="d-flex justify-content-center gap-2 mt-3">
-          <button class="btn btn-outline-secondary btn-sm" onclick="startScanner()">
+          <button class="btn btn-outline-secondary btn-sm" onclick="startScanner(event)">
             <i class="bi bi-camera-video me-1"></i> Buka Kamera (Scan)
           </button>
           <button class="btn btn-outline-primary btn-sm" onclick="clearSearch()">
@@ -306,7 +306,13 @@
 
     function escapeHTML(str) {
       if (!str) return '-';
-      return str.replace(/[&<>"']/g, c => ({'&':'&','<':'<','>':'>','"':'"',"'":'''}[c]));
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[c]));
     }
 
     function clearSearch() {
@@ -317,12 +323,14 @@
     }
 
     // Scanner functionality
-    async function startScanner() {
+    async function startScanner(e) {
       if (isScannerRunning) return;
 
-      const btn = event.target.closest('button');
-      btn.disabled = true;
-      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Memuat Kamera...`;
+      const btn = (e && e.target ? e.target : (window.event ? window.event.target : null))?.closest('button');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Memuat Kamera...`;
+      }
 
       try {
         const { Html5QrcodeScanner } = await import('https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js');
@@ -367,8 +375,10 @@
         console.error('Scanner error:', err);
         showToast('Gagal memuat scanner. Pastikan HTTPS atau localhost.', 'error');
       } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-camera-video me-1"></i> Buka Kamera (Scan)`;
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<i class="bi bi-camera-video me-1"></i> Buka Kamera (Scan)`;
+        }
       }
     }
 
