@@ -38,9 +38,6 @@ def member_portal_lookup(
         SalesOrder.status == "completed"
       ).order_by(SalesOrder.created_at.desc()).limit(50).all()
 
-    # Calculate points (1 point per 1000 spend)
-    points = int(cust.total_spend / 1000)
-
     order_history = []
     for o in orders:
         order_history.append({
@@ -57,8 +54,8 @@ def member_portal_lookup(
             "member_id": cust.member_id,
             "name": cust.name,
             "phone": cust.phone,
-            "total_spend": cust.total_spend,
-            "points": points
+            "total_spend": cust.total_spend or 0.0,
+            "total_commission": cust.total_commission or 0.0
         },
         "history": order_history
     }

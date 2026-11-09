@@ -38,3 +38,24 @@ def test_customer_name_cannot_be_cleared(api_client, tenant_factory, name):
     customer = api_client.post("/api/customers", json={"name": "Named member"}, headers=headers).json()
     response = api_client.put(f"/api/customers/{customer['id']}", json={"name": name}, headers=headers)
     assert response.status_code == 422
+
+
+def test_member_portal_lookup_commission(api_client, tenant_factory):
+    tenant = tenant_factory()
+    headers = {"Authorization": f"Bearer {tenant['token']}"}
+    created = api_client.post(
+        "/api/customers",
+        json={"name": "Affiliate Member", "phone": "089988776655"},
+        headers=headers
+    ).json()
+    member_id = created["member_id"]
+
+    res = api_client.get(f"/api/customers/portal/lookup?code={member_id}")
+    assert res.status_code == 200
+    data = res.json()
+    assert "member" in data
+    assert data["member"]["name"] == "Affiliate Member"
+    assert data["member"]["total_commission"] == 0.0
+    assert "points" not in data["member"]
+    assert "history" in data
+
