@@ -179,6 +179,11 @@ def pos_interface(request: Request):
         return RedirectResponse(url="/setup")
     return templates.TemplateResponse(request=request, name="pos/index.html", context=get_template_context(request))
 
+@app.get("/member-portal", response_class=HTMLResponse)
+def member_portal(request: Request):
+    """Public member portal - no login required"""
+    return templates.TemplateResponse(request=request, name="member_portal.html", context={"title": "Member Portal"})
+
 @app.get("/backoffice", response_class=HTMLResponse)
 def backoffice_root(request: Request):
     check = check_backoffice_access(request)

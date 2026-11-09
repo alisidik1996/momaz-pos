@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
@@ -6,6 +6,7 @@ from app.modules.auth.service import get_current_user
 from app.modules.auth.models import User
 from app.modules.customers.schemas import CustomerCreate, CustomerUpdate, CustomerOut, AffiliateCommissionOut
 from app.modules.customers import service
+from app.modules.sales.models import SalesOrder
 
 router = APIRouter(prefix="/api/customers", tags=["Customers, Members & Affiliate"])
 
@@ -19,6 +20,48 @@ def get_customer_by_code(code: str, db: Session = Depends(get_db), _: User = Dep
     if not cust:
         raise HTTPException(status_code=404, detail="Member / Pelanggan dengan ID atau No. HP tersebut tidak ditemukan.")
     return cust
+
+# Public endpoint for member portal (no auth required)
+@router.get("/portal/lookup")
+def member_portal_lookup(
+    code: str = Query(..., description="Member ID or phone number"),
+    db: Session = Depends(get_db)
+):
+    """Public endpoint for member to check points and purchase history"""
+    cust = service.get_customer_by_code(db, code.strip().upper())
+    if not cust:
+        raise HTTPException(status_code=404, detail="Member tidak ditemukan.")
+
+    # Get purchase history (completed orders only)
+    orders = db.query(SalesOrder).filter(
+        SalesOrder.customer_id == cust.id,
+        SalesOrder.status == "completed"
+      ).order_by(SalesOrder.created_at.desc()).limit(50).all()
+
+    # Calculate points (1 point per 1000 spend)
+    points = int(cust.total_spend / 1000)
+
+    order_history = []
+    for o in orders:
+        order_history.append({
+            "invoice_number": o.invoice_number,
+            "date": o.created_at.isoformat() if o.created_at else None,
+            "total_amount": o.total_amount,
+            "payment_method": o.payment_method,
+            "items_count": len(o.items) if o.items else 0
+        })
+
+    return {
+        "member": {
+            "id": cust.id,
+            "member_id": cust.member_id,
+            "name": cust.name,
+            "phone": cust.phone,
+            "total_spend": cust.total_spend,
+            "points": points
+        },
+        "history": order_history
+    }
 
 @router.get("/commissions", response_model=List[AffiliateCommissionOut])
 def get_commissions(
