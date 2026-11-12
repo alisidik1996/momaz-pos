@@ -83,10 +83,8 @@ async function submitOpenShift() {
     updateShiftUI();
     bootstrap.Modal.getOrCreateInstance(document.getElementById("openShiftModal")).hide();
     showToast("Shift kasir berhasil dibuka. Selamat bertugas!", "success");
-    posSound.success();
   } catch (err) {
     showToast(err.message, "error");
-    posSound.error();
   }
 }
 
@@ -257,7 +255,6 @@ function addProductToCart(product) {
   if (paymentInProgress || product.is_active === false) return;
   const stock = product.stock !== undefined ? product.stock : (product.total_stock || 0);
   if (stock <= 0) {
-    posSound.error();
     showToast(`Stok untuk "${product.name}" telah habis!`, "error");
     return;
   }
@@ -267,7 +264,6 @@ function addProductToCart(product) {
 
   if (existingIndex > -1) {
     if (cart[existingIndex].quantity + 1 > stock) {
-      posSound.error();
       showToast(`Maksimal stok tercapai (${stock} pcs).`, "warning");
       return;
     }
@@ -291,7 +287,6 @@ function addProductToCart(product) {
     });
   }
 
-  posSound.beep();
   renderCart();
 }
 
@@ -318,7 +313,6 @@ function setupBarcodeScanner() {
 
         if (existingIndex > -1) {
           if (cart[existingIndex].quantity + 1 > item.stock) {
-            posSound.error();
             showToast(`Maksimal stok tercapai (${item.stock} pcs).`, "warning");
             return;
           }
@@ -342,12 +336,10 @@ function setupBarcodeScanner() {
           });
         }
 
-        posSound.beep();
         renderCart();
         barcodeInput.value = "";
         barcodeInput.focus();
       } catch (err) {
-        posSound.error();
         showToast(err.message, "error");
         barcodeInput.select();
       }
@@ -368,7 +360,6 @@ function updateCartQty(id, delta) {
   }
 
   if (newQty > item.stock) {
-    posSound.error();
     showToast(`Stok maksimal hanya ${item.stock} pcs!`, "warning");
     return;
   }
@@ -589,7 +580,6 @@ async function stopMemberCameraScanner() {
 }
 
 async function handleMemberCodeScanned(scannedText) {
-  posSound.beep();
   await stopMemberCameraScanner();
   showToast(`Barcode terbaca: ${scannedText}`, "info");
 
@@ -597,7 +587,6 @@ async function handleMemberCodeScanned(scannedText) {
     const member = await api.get(`/api/customers/by-code/${encodeURIComponent(scannedText.trim())}`);
     selectMemberForCheckout(member);
   } catch (err) {
-    posSound.error();
     showToast("Member dengan barcode tersebut tidak ditemukan.", "error");
   }
 }
@@ -659,7 +648,6 @@ function showSelectedMemberUI(member) {
   const savings = calculateMemberDiscountSavings(member);
   document.getElementById("active-member-discount-total").innerText = formatRupiah(savings);
   document.getElementById("btn-proceed-with-member").disabled = false;
-  posSound.success();
 }
 
 function cancelSelectedMember() {
@@ -821,7 +809,6 @@ async function executePayment() {
 
   if (amountPaid < grandTotal) {
     showToast("Nominal pembayaran masih kurang dari total tagihan!", "warning");
-    posSound.error();
     return;
   }
 
@@ -849,7 +836,6 @@ async function executePayment() {
     const res = await api.post("/api/sales/checkout", payload);
     bootstrap.Modal.getOrCreateInstance(document.getElementById("paymentModal")).hide();
     
-    posSound.success();
     showToast(`Transaksi ${res.invoice_number} berhasil diselesaikan!`, "success");
     
     // Clear cart
@@ -867,7 +853,6 @@ async function executePayment() {
     loadProducts(document.getElementById("search-input").value);
     initShiftCheck();
   } catch (err) {
-    posSound.error();
     showToast(err.message, "error");
   } finally {
     paymentInProgress = false;

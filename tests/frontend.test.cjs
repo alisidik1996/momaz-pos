@@ -21,7 +21,6 @@ function environment(template = "pos/index.html") {
     show() {}
     hide() {}
   }};
-  window.posSound = { beep() {}, success() {}, error() {} };
   window.Headers = globalThis.Headers;
   const context = dom.getInternalVMContext();
   new vm.Script(fs.readFileSync(path.join(root, "app/static/js/api.js"), "utf8")).runInContext(context);

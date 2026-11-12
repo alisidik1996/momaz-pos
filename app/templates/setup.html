@@ -282,7 +282,6 @@
 
   <!-- Bootstrap 5 Bundle JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="/static/js/sound.js"></script>
   <script src="/static/js/api.js"></script>
   <script>
     let currentStep = 1;
@@ -352,7 +351,6 @@
       input.value = "";
       input.focus();
 
-      posSound.beep(750, 0.08);
       showToast(`Kategori "${name}" berhasil ditambahkan!`, "success");
     }
 
@@ -442,13 +440,11 @@
 
       try {
         const res = await api.post("/api/tenants/setup", payload);
-        posSound.success();
         showToast("Toko berhasil dibuat! Mengalihkan ke Backoffice...", "success");
         setTimeout(() => {
           window.location.href = "/backoffice/dashboard";
         }, 800);
       } catch (err) {
-        posSound.error();
         showToast(err.message, "error");
         btn.disabled = false;
         btn.innerHTML = `Buat Database `;
