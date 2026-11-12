@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: momaz-postgres
+    environment:
+      POSTGRES_DB: momaz
+      POSTGRES_USER: momaz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-momaz123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U momaz -d momaz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: momaz-app
+    environment:
+      DATABASE_URL: postgresql://momaz:${POSTGRES_PASSWORD:-momaz123}@postgres:5432/momaz
+      DATABASE_URL_UNPOOLED: postgresql://momaz:${POSTGRES_PASSWORD:-momaz123}@postgres:5432/momaz
+      SECRET_KEY: ${SECRET_KEY:-$(openssl rand -base64 48)}
+      PRODUCTION: "false"
+    volumes:
+      - ./app/static/uploads:/app/static/uploads
+      - ./tenants:/app/tenants
+      - ./master.db:/app/master.db
+    ports:
+      - "8181:8181"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
