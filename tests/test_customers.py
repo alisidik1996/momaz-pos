@@ -59,3 +59,9 @@ def test_member_portal_lookup_commission(api_client, tenant_factory):
     assert "points" not in data["member"]
     assert "history" in data
 
+    res_tenant = api_client.get(f"/api/customers/portal/lookup?code={member_id}&tenant={tenant['slug']}")
+    assert res_tenant.status_code == 200
+
+    res_404 = api_client.get("/api/customers/portal/lookup?code=NONEXISTENT123")
+    assert res_404.status_code == 404
+
