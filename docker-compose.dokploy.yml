@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: momaz-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: momaz
+      POSTGRES_USER: momaz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-momaz123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U momaz -d momaz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  momaz-pos:
+    image: alisidik1996/momaz-pos:latest
+    container_name: momaz-pos
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://momaz:${POSTGRES_PASSWORD:-momaz123}@postgres:5432/momaz
+      DATABASE_URL_UNPOOLED: postgresql://momaz:${POSTGRES_PASSWORD:-momaz123}@postgres:5432/momaz
+      SECRET_KEY: ${SECRET_KEY:-g4k8m2p9w1x7z3v5r8t0y2u4i6o8p0a2s4d6f8h0j2k4l6z8x0c2v4b6n8m0}
+      PRODUCTION: "true"
+    volumes:
+      - uploads_data:/app/app/static/uploads
+      - tenants_data:/app/tenants
+    ports:
+      - "8181:8181"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  uploads_data:
+  tenants_data:
