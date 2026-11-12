@@ -106,7 +106,7 @@
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
         <h5 class="modal-title fw-bold">Penerimaan Barang (Restock)</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <form onsubmit="handleStockInSubmit(event)">
         <div class="modal-body p-4">
@@ -114,10 +114,10 @@
           <div class="mb-3 position-relative">
             <label class="form-label fw-bold">Cari Produk / Scan Barcode / Ketik SKU</label>
             <div class="input-group">
-              <span class="input-group-text bg-white"></span>
               <input type="text" id="stockin-code" class="form-control" placeholder="Ketik nama produk, SKU, atau barcode..." autocomplete="off" required oninput="handleStockInSearchInput(this.value)">
               <button class="btn btn-outline-secondary is-hidden" type="button" onclick="clearStockInSelection()" id="stockin-clear-btn">
-                </button>
+                Batal
+              </button>
             </div>
             <!-- AJAX Suggestions Dropdown -->
             <div id="stockin-search-results" class="list-group shadow position-absolute w-100 mt-1 search-dropdown is-hidden"></div>
@@ -171,7 +171,7 @@
     <div class="modal-content">
       <div class="modal-header bg-warning">
         <h5 class="modal-title fw-bold">Penyesuaian Stok (Opname Fisik)</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <form onsubmit="handleOpnameSubmit(event)">
         <div class="modal-body p-4">
@@ -179,10 +179,10 @@
           <div class="mb-3 position-relative">
             <label class="form-label fw-bold">Cari Produk / Scan Barcode / Ketik SKU</label>
             <div class="input-group">
-              <span class="input-group-text bg-white"></span>
               <input type="text" id="opname-code" class="form-control" placeholder="Ketik nama produk, SKU, atau scan barcode..." autocomplete="off" required oninput="handleOpnameSearchInput(this.value)">
               <button class="btn btn-outline-secondary is-hidden" type="button" onclick="clearOpnameSelection()" id="opname-clear-btn">
-                </button>
+                Batal
+              </button>
             </div>
             <!-- AJAX Suggestions Dropdown -->
             <div id="opname-search-results" class="list-group shadow position-absolute w-100 mt-1 search-dropdown is-hidden"></div>

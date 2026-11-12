@@ -46,13 +46,11 @@
         <!-- Search & Scanner Input Bar -->
         <div class="pos-search-bar d-flex gap-2">
           <div class="input-group pos-search-group">
-            <span class="input-group-text bg-white border-primary"></span>
             <input type="text" id="barcode-scanner-input" class="form-control border-primary fw-bold" 
                    placeholder="Scan Barcode / Tekan F2..." autofocus autocomplete="off">
           </div>
 
           <div class="input-group flex-grow-1">
-            <span class="input-group-text bg-white"></span>
             <input type="text" id="search-input" class="form-control" placeholder="Cari nama pakaian (F1)...">
           </div>
         </div>
@@ -94,7 +92,6 @@
         <!-- Customer Selector -->
         <div class="p-2 border-bottom bg-light">
           <div class="input-group input-group-sm">
-            <span class="input-group-text bg-white"></span>
             <select class="form-select form-select-sm" id="customer-select" onchange="handleCustomerChange(this)">
               <option value="">Pelanggan Umum (Tanpa Member)</option>
             </select>
@@ -144,7 +141,7 @@
       <div class="modal-content">
         <div class="modal-header bg-primary text-white">
           <h5 class="modal-title fw-bold">Buka Shift Kasir Baru</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Tutup"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" title="Tutup" aria-label="Tutup"></button>
         </div>
         <div class="modal-body p-4">
           <p class="text-muted small">Sebelum melayani pelanggan, silakan masukkan modal kas awal (*cash float*) yang ada di laci kasir.</p>
@@ -175,7 +172,7 @@
       <div class="modal-content">
         <div class="modal-header bg-dark text-white">
           <h5 class="modal-title fw-bold">Tutup Shift & Rekonsiliasi Kas</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
         </div>
         <div class="modal-body p-4">
           <div class="p-3 bg-light rounded mb-3 border">
@@ -220,7 +217,7 @@
       <div class="modal-content shadow-lg border-0">
         <div class="modal-header bg-dark text-white">
           <h5 class="modal-title fw-bold">Konfirmasi Member & Affiliate</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopMemberCameraScanner()"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopMemberCameraScanner()" aria-label="Tutup"></button>
         </div>
         <div class="modal-body p-4">
           <div class="text-center mb-4">
@@ -266,7 +263,6 @@
               <div class="mb-3">
                 <label class="form-label fw-bold small">Masukkan Nomor Handphone atau 12 Digit ID Member</label>
                 <div class="input-group">
-                  <span class="input-group-text bg-white"></span>
                   <input type="text" id="member-manual-input" class="form-control" placeholder="Contoh: 08123456789 atau 12 Digit ID..." onkeydown="if(event.key==='Enter'){event.preventDefault();searchMemberManual();}">
                   <button type="button" class="btn btn-primary fw-bold" onclick="searchMemberManual()">
                     Cari Member
@@ -314,7 +310,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title fw-bold">Pembayaran Transaksi</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
         </div>
         <div class="modal-body p-4">
           <input type="hidden" id="pay-modal-grandtotal-raw" value="0">
@@ -400,7 +396,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title fw-bold">Struk Belanja Pelanggan</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
         </div>
         <div class="modal-body p-3 bg-light" id="thermal-receipt-preview">
           <!-- Populated by pos.js -->

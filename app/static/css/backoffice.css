@@ -1,8 +1,4 @@
 /* Backoffice Page Components */
-.app-content-scroll {
-  overflow-y: auto;
-}
-
 .table-col-photo {
   width: 60px;
 }

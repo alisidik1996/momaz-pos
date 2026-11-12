@@ -87,7 +87,7 @@
         <h5 class="modal-title fw-bold" id="userModalTitle">
           Tambah User Baru
         </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <form id="userForm" onsubmit="handleUserFormSubmit(event)">
         <div class="modal-body p-4">
@@ -119,7 +119,8 @@
             <div class="input-group">
               <input type="password" class="form-control" id="user-password" placeholder="Minimal 4 karakter" autocomplete="new-password">
               <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility()">
-                </button>
+                <span id="togglePasswordIcon">Lihat</span>
+              </button>
             </div>
             <small class="text-muted fs-080" id="user-password-hint">Wajib diisi saat membuat user baru.</small>
           </div>
@@ -222,9 +223,11 @@
           <td><small class="text-muted">${formatDate(u.created_at)}</small></td>
           <td class="text-end">
             <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditUserModal(${u.id})" title="Edit User">
-              </button>
+              Edit
+            </button>
             <button class="btn btn-sm btn-outline-danger" onclick="deleteUser(${u.id}, ${jsonForAttribute(u.username)})" title="Hapus User">
-              </button>
+              Hapus
+            </button>
           </td>
         </tr>
       `;
@@ -244,6 +247,9 @@
     
     // Password required for new user
     const passInput = document.getElementById("user-password");
+    const passIcon = document.getElementById("togglePasswordIcon");
+    passInput.type = "password";
+    if (passIcon) passIcon.innerText = "Lihat";
     passInput.required = true;
     passInput.placeholder = "Minimal 4 karakter";
     document.getElementById("req-password-mark").style.display = "inline";
@@ -265,6 +271,9 @@
 
     // Password optional for edit
     const passInput = document.getElementById("user-password");
+    const passIcon = document.getElementById("togglePasswordIcon");
+    passInput.type = "password";
+    if (passIcon) passIcon.innerText = "Lihat";
     passInput.value = "";
     passInput.required = false;
     passInput.placeholder = "Kosongkan jika tidak ingin mengubah password";
@@ -281,10 +290,10 @@
     const icon = document.getElementById("togglePasswordIcon");
     if (input.type === "password") {
       input.type = "text";
-      icon.className = "bi bi-eye-slash";
+      if (icon) icon.innerText = "Sembunyikan";
     } else {
       input.type = "password";
-      icon.className = "bi bi-eye";
+      if (icon) icon.innerText = "Lihat";
     }
   }
 

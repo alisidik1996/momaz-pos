@@ -24,7 +24,7 @@
   <ul class="nav nav-tabs mb-3" role="tablist">
     <li class="nav-item" role="presentation">
       <button class="nav-link active" id="tab-members-btn" data-bs-toggle="tab" data-bs-target="#tab-members-content" type="button" role="tab">
-        Daftar Member
+        Daftar Member <span class="badge bg-primary ms-1" id="member-count-badge">0</span>
       </button>
     </li>
     <li class="nav-item" role="presentation">
@@ -180,7 +180,7 @@
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title fw-bold" id="memberModalTitle">Tambah Member Baru</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <form onsubmit="handleMemberFormSubmit(event)">
         <div class="modal-body p-4">
@@ -195,7 +195,6 @@
               </button>
             </div>
             <div class="input-group">
-              <span class="input-group-text bg-light fw-bold"></span>
               <input type="text" id="modal-member-code" class="form-control font-monospace fw-bold fs-5 text-primary text-uppercase" maxlength="12" required oninput="renderModalBarcode(this.value)">
             </div>
             <small class="text-muted fs-075">ID unik 12 digit acak yang di-generate menjadi barcode batang.</small>
@@ -244,7 +243,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title fw-bold">Kartu Member & Barcode</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <div class="modal-body p-4 bg-light text-center">
         
@@ -350,9 +349,11 @@
                 Kartu
               </button>
               <button class="btn btn-outline-secondary" onclick="openEditMemberModal(${m.id})" title="Edit Data Member">
-                </button>
+                Edit
+              </button>
               <button class="btn btn-outline-danger" onclick="deleteMember(${m.id}, ${jsonForAttribute(m.name)})" title="Hapus Member">
-                </button>
+                Hapus
+              </button>
             </div>
           </td>
         </tr>

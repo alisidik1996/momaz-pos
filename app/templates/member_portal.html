@@ -117,7 +117,7 @@
       toastEl.innerHTML = `
         <div class="d-flex">
           <div class="toast-body">${message}</div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Tutup"></button>
         </div>
       `;
       container.appendChild(toastEl);
@@ -252,7 +252,7 @@
               <div class="modal-content">
                 <div class="modal-header bg-primary text-white">
                   <h5 class="modal-title fw-bold"><i class="bi bi-camera-video me-2"></i>Scan Member ID</h5>
-                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopScanner()"></button>
+                  <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="stopScanner()" aria-label="Tutup"></button>
                 </div>
                 <div class="modal-body p-3">
                   <div id="qr-reader" class="qr-reader"></div>

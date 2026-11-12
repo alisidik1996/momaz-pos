@@ -60,7 +60,7 @@
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title fw-bold">Tambah Produk Baru</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <form onsubmit="handleCreateProduct(event)">
         <div class="modal-body p-4">
@@ -79,7 +79,6 @@
             <div class="col-md-6">
               <label class="form-label small fw-semibold">Barcode (Opsional)</label>
               <div class="input-group">
-                <span class="input-group-text"></span>
                 <input type="text" id="new-prod-barcode" class="form-control" placeholder="Scan barcode produk...">
               </div>
             </div>
@@ -167,7 +166,7 @@
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title fw-bold">Kelola Kategori & Brand Pakaian</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <div class="modal-body p-4">
         <!-- Nav Tabs -->
@@ -246,7 +245,7 @@
     <div class="modal-content">
       <div class="modal-header bg-primary text-white">
         <h5 class="modal-title fw-bold">Impor Produk Massal (Upload CSV)</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <div class="modal-body p-4">
         <!-- Panduan Pengisian -->
@@ -292,7 +291,7 @@
     <div class="modal-content">
       <div class="modal-header bg-warning text-dark">
         <h5 class="modal-title fw-bold">Edit Data Produk</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <form onsubmit="handleUpdateProduct(event)">
         <input type="hidden" id="edit-prod-id">
@@ -312,7 +311,6 @@
             <div class="col-md-6">
               <label class="form-label small fw-semibold">Barcode</label>
               <div class="input-group">
-                <span class="input-group-text"></span>
                 <input type="text" id="edit-prod-barcode" class="form-control" placeholder="Barcode produk...">
               </div>
             </div>
@@ -392,7 +390,7 @@
     <div class="modal-content">
       <div class="modal-header bg-success text-white">
         <h5 class="modal-title fw-bold">Tambah Stok Produk (Restock)</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
       </div>
       <form onsubmit="handleRestockSubmit(event)">
         <input type="hidden" id="restock-prod-id">
@@ -521,7 +519,8 @@
           <td><code>${escapeHTML(c.slug)}</code></td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-danger" onclick="deleteCategory(${c.id})">
-              </button>
+              Hapus
+            </button>
           </td>
         </tr>
       `).join("");
@@ -547,7 +546,8 @@
           <td class="fw-bold">${escapeHTML(b.name)}</td>
           <td class="text-center">
             <button class="btn btn-sm btn-outline-danger" onclick="deleteBrand(${b.id})">
-              </button>
+              Hapus
+            </button>
           </td>
         </tr>
       `).join("");
