@@ -26,12 +26,10 @@ services:
     environment:
       DATABASE_URL: postgresql://momaz:${POSTGRES_PASSWORD:-momaz123}@postgres:5432/momaz
       DATABASE_URL_UNPOOLED: postgresql://momaz:${POSTGRES_PASSWORD:-momaz123}@postgres:5432/momaz
-      SECRET_KEY: ${SECRET_KEY:-$(openssl rand -base64 48)}
+      SECRET_KEY: "${SECRET_KEY:?SECRET_KEY wajib diisi minimal 32 byte acak (generate openssl rand -base64 48)}"
       PRODUCTION: "false"
     volumes:
       - ./app/static/uploads:/app/static/uploads
-      - ./tenants:/app/tenants
-      - ./master.db:/app/master.db
     ports:
       - "8181:8181"
     depends_on:

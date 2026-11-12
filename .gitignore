@@ -48,7 +48,7 @@ venv.bak/
 /master.db
 /tenants/
 
-# Local Uploads (Vercel Blob Storage is used in production)
+# Local Uploads
 app/static/uploads/products/*
 !app/static/uploads/products/.gitkeep
 
@@ -65,9 +65,7 @@ node_modules/
 .idea/
 .DS_Store
 Thumbs.db
-
-# Vercel CLI cache
-.vercel/
+*.stackdump
 
 # Antigravity CLI
 .gemini/

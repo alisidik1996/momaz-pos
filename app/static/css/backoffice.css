@@ -1,0 +1,32 @@
+/* Backoffice Page Components */
+.app-content-scroll {
+  overflow-y: auto;
+}
+
+.table-col-photo {
+  width: 60px;
+}
+
+.table-col-actions {
+  min-width: 200px;
+}
+
+.table-col-action-sm {
+  width: 80px;
+}
+
+.image-preview {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+}
+
+.settings-container {
+  max-width: 900px;
+}
+
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  font-size: 0.9rem;
+}

@@ -101,7 +101,7 @@
           <div class="mb-3">
             <label for="user-username" class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="user-username" placeholder="Contoh: budi123" required autocomplete="off">
-            <small class="text-muted" style="font-size: 0.8rem;">Digunakan untuk login ke sistem.</small>
+            <small class="text-muted fs-080">Digunakan untuk login ke sistem.</small>
           </div>
 
           <div class="mb-3">
@@ -121,7 +121,7 @@
               <button class="btn btn-outline-secondary" type="button" onclick="togglePasswordVisibility()">
                 </button>
             </div>
-            <small class="text-muted" id="user-password-hint" style="font-size: 0.8rem;">Wajib diisi saat membuat user baru.</small>
+            <small class="text-muted fs-080" id="user-password-hint">Wajib diisi saat membuat user baru.</small>
           </div>
 
           <div class="mb-2">
@@ -129,7 +129,7 @@
               <input class="form-check-input" type="checkbox" id="user-active" checked>
               <label class="form-check-label fw-semibold" for="user-active">Akun Aktif (Dapat Login)</label>
             </div>
-            <small class="text-muted d-block" style="font-size: 0.8rem;">Jika dinonaktifkan, akun tidak dapat digunakan untuk login.</small>
+            <small class="text-muted d-block fs-080">Jika dinonaktifkan, akun tidak dapat digunakan untuk login.</small>
           </div>
         </div>
         <div class="modal-footer bg-light">
@@ -207,7 +207,7 @@
         <tr>
           <td>
             <div class="d-flex align-items-center gap-2">
-              <div class="rounded-circle bg-light border text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 36px; height: 36px; font-size: 0.9rem;">
+              <div class="rounded-circle bg-light border text-primary fw-bold d-flex align-items-center justify-content-center user-avatar">
                 ${escapeHTML(initial)}
               </div>
               <div>

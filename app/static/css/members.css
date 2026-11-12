@@ -1,0 +1,95 @@
+/* Member & Affiliate Backoffice Page */
+.member-card-container {
+  max-width: 420px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.member-card-container::before {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: rgba(59, 130, 246, 0.15);
+  border-radius: 50%;
+}
+
+.member-card-badge {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.member-card-barcode-box {
+  background: #fff;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-top: 16px;
+  text-align: center;
+}
+
+.member-card-barcode-box svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Table column sizing */
+.member-col-product {
+  width: 300px;
+}
+
+.member-col-type {
+  width: 160px;
+}
+
+.member-col-value {
+  width: 180px;
+}
+
+/* Barcode previews */
+.barcode-preview {
+  max-width: 100%;
+  height: 60px;
+}
+
+.member-row-barcode {
+  height: 36px;
+  max-width: 140px;
+}
+
+.member-row-link {
+  cursor: pointer;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-member-card, #printable-member-card * {
+    visibility: visible;
+  }
+  #printable-member-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 450px;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: 1px solid #ccc;
+  }
+}

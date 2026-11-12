@@ -11,18 +11,19 @@
   
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="stylesheet" href="/static/css/receipt.css">
+  <link rel="stylesheet" href="/static/css/backoffice.css">
   {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-  <div class="d-flex" style="min-height: 100vh;">
+  <div class="d-flex min-h-screen">
     <!-- Sidebar -->
     <aside class="sidebar d-flex flex-column">
       <div class="brand">
         <h5 class="text-white fw-bold mb-0 d-flex align-items-center gap-2">
           <i class="bi bi-shop text-primary"></i> <span class="app-store-name">{{ store_name|default('POS') }}</span>
         </h5>
-        <small class="text-secondary" style="font-size: 0.75rem;">Backoffice</small>
+        <small class="text-secondary fs-075">Backoffice</small>
       </div>
 
       <nav class="nav flex-column mt-3 flex-grow-1">
@@ -70,7 +71,7 @@
     </aside>
 
     <!-- Main Content Area -->
-    <div class="flex-grow-1 d-flex flex-column" style="overflow-y: auto;">
+    <div class="flex-grow-1 d-flex flex-column app-content-scroll">
       <!-- Top Navbar -->
       <header class="bg-white border-bottom py-2 px-4 d-flex justify-content-between align-items-center">
         <div></div>

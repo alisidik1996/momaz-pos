@@ -8,7 +8,7 @@ import pytest
 
 def run_config(code, **variables):
     environment = {key: value for key, value in os.environ.items() if key in {"PATH", "SYSTEMROOT", "WINDIR", "TEMP", "TMP"}}
-    environment.update({"PRODUCTION": "0", "VERCEL": "0", **variables})
+    environment.update({"PRODUCTION": "0", **variables})
     return subprocess.run([sys.executable, "-c", code], cwd=Path(__file__).resolve().parents[1], env=environment, capture_output=True, text=True)
 
 

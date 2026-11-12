@@ -8,8 +8,8 @@ class Settings:
     PROJECT_NAME: str = "Momaz POS - Retail Pakaian (Multi-Tenant)"
     VERSION: str = "2.0.0"
 
-    # Cloud Database (Neon.tech PostgreSQL / Vercel Postgres)
-    # POOLED URL — untuk query reguler sehari-hari (lebih efisien di Vercel)
+    # Cloud Database (Neon.tech PostgreSQL)
+    # POOLED URL — untuk query reguler sehari-hari
     # Neon pooler (PgBouncer) tidak support startup params seperti search_path
     # URL rewrite: postgres:// → postgresql:// (psycopg3 compatibility)
     raw_db_url: str = (
@@ -43,13 +43,8 @@ class Settings:
     # Tenants Database Directory (used when running in SQLite fallback mode)
     TENANTS_DIR: Path = BASE_DIR / "tenants"
     
-    # Vercel Blob Storage Credentials
-    BLOB_READ_WRITE_TOKEN: str = os.getenv("BLOB_READ_WRITE_TOKEN", "").strip()
-    BLOB_STORE_ID: str = os.getenv("BLOB_STORE_ID", "").strip()
-    
     # Security: production requires an explicit key; local keys are process-local.
-    IS_VERCEL: bool = os.getenv("VERCEL", "").strip().lower() in {"1", "true", "yes", "on"}
-    IS_PRODUCTION: bool = IS_VERCEL or os.getenv("PRODUCTION", "").strip().lower() in {"1", "true", "yes", "on"}
+    IS_PRODUCTION: bool = os.getenv("PRODUCTION", "").strip().lower() in {"1", "true", "yes", "on"}
     configured_secret: str = os.getenv("SECRET_KEY", "").strip()
     if IS_PRODUCTION and (len(configured_secret.encode("utf-8")) < 32 or configured_secret.startswith("super-secret-momaz-pos-")):
         raise RuntimeError("SECRET_KEY produksi wajib diisi dengan kunci acak minimal 32 byte.")

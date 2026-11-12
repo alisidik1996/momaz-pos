@@ -28,7 +28,7 @@
       <div class="d-flex align-items-center gap-3">
         <div class="text-end me-2 d-none d-md-block">
           <div class="fw-semibold small">{% if user %}{{ user.sub }}{% else %}Kasir{% endif %}</div>
-          <div class="text-secondary" style="font-size:0.75rem;" id="live-clock">-</div>
+          <div class="text-secondary fs-075" id="live-clock">-</div>
         </div>
         <a href="/backoffice/dashboard" class="btn btn-outline-light btn-sm">
           Backoffice
@@ -45,7 +45,7 @@
       <section class="pos-left">
         <!-- Search & Scanner Input Bar -->
         <div class="pos-search-bar d-flex gap-2">
-          <div class="input-group" style="max-width: 380px;">
+          <div class="input-group pos-search-group">
             <span class="input-group-text bg-white border-primary"></span>
             <input type="text" id="barcode-scanner-input" class="form-control border-primary fw-bold" 
                    placeholder="Scan Barcode / Tekan F2..." autofocus autocomplete="off">
@@ -116,7 +116,7 @@
             <span>Diskon Pesanan</span>
             <span class="text-danger" id="cart-discount">Rp 0</span>
           </div>
-          <div class="cart-total-row" id="cart-tax-row" style="display:none;">
+          <div class="cart-total-row is-hidden" id="cart-tax-row">
             <span>PPN</span>
             <span id="cart-tax">Rp 0</span>
           </div>
@@ -245,7 +245,7 @@
           <div class="tab-content border rounded p-3 mb-3 bg-white">
             <!-- Camera Scanner Tab -->
             <div class="tab-pane fade show active text-center" id="tab-camera-scan">
-              <div id="member-camera-reader" style="width: 100%; max-width: 380px; min-height: 220px; margin: 0 auto; background: #000; border-radius: 8px; overflow: hidden;" class="d-flex align-items-center justify-content-center text-white">
+              <div id="member-camera-reader" class="member-camera-reader d-flex align-items-center justify-content-center text-white">
                 <div class="text-center p-3" id="camera-placeholder">
                   <small class="text-white-50">Klik tombol di bawah untuk mengaktifkan kamera scanner.</small>
                 </div>
@@ -258,7 +258,7 @@
                   Matikan Kamera
                 </button>
               </div>
-              <small class="text-muted d-block mt-2" style="font-size:0.75rem;">Arahkan barcode batang kartu member ke arah lensa kamera.</small>
+              <small class="text-muted d-block mt-2 fs-075">Arahkan barcode batang kartu member ke arah lensa kamera.</small>
             </div>
 
             <!-- Manual Input Tab -->
@@ -278,7 +278,7 @@
           </div>
 
           <!-- Selected Member Card Display -->
-          <div id="selected-member-card" style="display: none;" class="p-3 bg-success-subtle border border-success rounded mb-3">
+          <div id="selected-member-card" class="is-hidden p-3 bg-success-subtle border border-success rounded mb-3">
             <div class="d-flex justify-content-between align-items-center">
               <div>
                 <span class="badge bg-success mb-1">MEMBER TERVERIFIKASI</span>
@@ -360,7 +360,7 @@
           </div>
 
           <!-- Dynamic QRIS Panel -->
-          <div id="pay-qris-panel" style="display:none;" class="text-center py-3">
+          <div id="pay-qris-panel" class="is-hidden text-center py-3">
             <div class="p-3 border rounded d-inline-block bg-white shadow-sm mb-3">
               <!-- Simulated dynamic QRIS -->
               <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" fill="currentColor" class="bi bi-qr-code" viewBox="0 0 16 16">
@@ -372,7 +372,7 @@
           </div>
 
           <!-- Dynamic Card Panel -->
-          <div id="pay-card-panel" style="display:none;">
+          <div id="pay-card-panel" class="is-hidden">
             <div class="mb-3">
               <label class="form-label small">Nomor Referensi / Approval Code Mesin EDC</label>
               <input type="text" class="form-control" placeholder="Contoh: REF-1092837">

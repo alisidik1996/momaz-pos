@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from urllib.parse import urlsplit
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, JSONResponse
@@ -19,12 +20,6 @@ from app.modules.shifts.router import router as shifts_router
 from app.modules.sales.router import router as sales_router
 from app.modules.returns.router import router as returns_router
 from app.modules.reports.router import router as reports_router
-try:
-    from app.modules.monitoring.router import router as monitoring_router
-except ModuleNotFoundError as exc:
-    if exc.name not in {"app.modules.monitoring", "app.modules.monitoring.router"}:
-        raise
-    monitoring_router = None
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -50,8 +45,10 @@ app = FastAPI(
 async def protect_cookie_mutations(request: Request, call_next):
     if request.method not in {"GET", "HEAD", "OPTIONS"} and request.cookies.get("access_token"):
         origin = request.headers.get("Origin")
-        if origin and origin.rstrip("/").lower() != str(request.base_url).rstrip("/").lower():
-            if not request.headers.get("Authorization"):
+        if origin and not request.headers.get("Authorization"):
+            origin_host = urlsplit(origin).hostname
+            request_host = request.url.hostname
+            if not origin_host or not request_host or origin_host.lower() != request_host.lower():
                 return JSONResponse(status_code=403, content={"detail": "Asal permintaan tidak diizinkan."})
     return await call_next(request)
 
@@ -69,8 +66,6 @@ app.include_router(shifts_router)
 app.include_router(sales_router)
 app.include_router(returns_router)
 app.include_router(reports_router)
-if monitoring_router is not None:
-    app.include_router(monitoring_router)
 
 # Helper to inspect user from cookie
 def get_user_from_cookie(request: Request):
@@ -280,15 +275,4 @@ def backoffice_users(request: Request):
         return check
     return templates.TemplateResponse(request=request, name="backoffice/users.html", context=get_template_context(request, {
         "active_page": "users"
-    }))
-
-@app.get("/backoffice/monitoring", response_class=HTMLResponse)
-def backoffice_monitoring(request: Request):
-    check = check_backoffice_access(request)
-    if check:
-        return check
-    if monitoring_router is None or not (BASE_DIR / "templates" / "backoffice" / "monitoring.html").is_file():
-        raise HTTPException(status_code=404, detail="Modul monitoring belum tersedia.")
-    return templates.TemplateResponse(request=request, name="backoffice/monitoring.html", context=get_template_context(request, {
-        "active_page": "monitoring"
     }))

@@ -160,6 +160,36 @@ body {
   color: var(--primary-color);
 }
 
+/* Layout & Helper Utilities */
+.min-h-screen {
+  min-height: 100vh;
+}
+
+.app-content-scroll {
+  overflow-y: auto;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.is-hidden {
+  display: none;
+}
+
+.search-dropdown {
+  z-index: 1060;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.fs-065 { font-size: 0.65rem; }
+.fs-070 { font-size: 0.70rem; }
+.fs-075 { font-size: 0.75rem; }
+.fs-078 { font-size: 0.78rem; }
+.fs-080 { font-size: 0.80rem; }
+.fs-085 { font-size: 0.85rem; }
+
 /* Modal Lock & Static Backdrop Feedback */
 .modal.modal-static .modal-dialog {
   transform: scale(1.02) !important;

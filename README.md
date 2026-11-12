@@ -155,7 +155,7 @@ Pengujian memakai database master, tenant, dan unggahan sementara yang terpisah 
 - Lifecycle pembukaan dan penutupan shift kasir dengan rekonsiliasi uang fisik.
 - Penolakan header tenant asing, pencabutan sesi setelah perubahan password, dan pencegahan pengambilalihan username antar-toko.
 - Checkout bersamaan, rollback transaksi gagal, batas jumlah/nilai retur, dan pembatalan komisi affiliate.
-- Migrasi SQLite, isolasi nama tabel PostgreSQL, validasi file, serta kontrak upload Vercel Blob v13 dengan transport HTTP mock.
+- Migrasi SQLite, isolasi nama tabel PostgreSQL, dan validasi file upload gambar.
 
 ### Pengujian frontend
 Gunakan Node.js 18+ untuk pengujian DOM dengan jsdom:

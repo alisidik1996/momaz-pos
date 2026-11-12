@@ -19,7 +19,6 @@ _test_root = Path(_test_data.name)
 settings.DATABASE_URL = ""
 settings.DATABASE_URL_UNPOOLED = ""
 settings.IS_PRODUCTION = False
-settings.IS_VERCEL = False
 settings.SECRET_KEY = secrets.token_urlsafe(48)
 settings.MASTER_DATABASE_PATH = _test_root / "master.db"
 settings.MASTER_DATABASE_URL = f"sqlite:///{settings.MASTER_DATABASE_PATH}"
@@ -48,8 +47,6 @@ def isolated_application_data():
 def isolated_uploads(monkeypatch):
     from app.core import storage
 
-    monkeypatch.delenv("BLOB_READ_WRITE_TOKEN", raising=False)
-    monkeypatch.delenv("BLOB_STORE_ID", raising=False)
     monkeypatch.setattr(storage, "LOCAL_UPLOAD_DIR", _test_root / "uploads" / "products")
 
 

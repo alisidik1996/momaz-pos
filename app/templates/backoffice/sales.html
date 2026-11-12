@@ -89,7 +89,7 @@
           <div class="receipt-divider"></div>
           <table class="receipt-table">
             <thead>
-              <tr><th>Item</th><th style="text-align:right;">Total</th></tr>
+              <tr><th>Item</th><th class="text-end">Total</th></tr>
             </thead>
             <tbody>
               ${receipt.items.map(it => `
@@ -98,7 +98,7 @@
                     <div class="receipt-item-title">${escapeHTML(it.product_name)}</div>
                     <div class="receipt-item-sub">${escapeHTML(it.variant_info)} (${it.quantity}x @${formatRupiah(it.unit_price)})</div>
                   </td>
-                  <td style="text-align:right; font-weight:bold;">${formatRupiah(it.subtotal)}</td>
+                  <td class="text-end fw-bold">${formatRupiah(it.subtotal)}</td>
                 </tr>
               `).join("")}
             </tbody>

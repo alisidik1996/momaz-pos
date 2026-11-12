@@ -32,7 +32,7 @@
         <table class="table table-hover align-middle mb-0" id="products-table">
           <thead>
             <tr>
-              <th style="width: 60px;" class="no-sort">Foto</th>
+              <th class="table-col-photo no-sort">Foto</th>
               <th>Nama Produk</th>
               <th>SKU</th>
               <th>Barcode</th>
@@ -40,7 +40,7 @@
               <th>HPP (Modal)</th>
               <th>Harga (Jual / Promo)</th>
               <th>Stok</th>
-              <th style="min-width: 200px;" class="no-sort">Aksi</th>
+              <th class="table-col-actions no-sort">Aksi</th>
             </tr>
           </thead>
           <tbody id="products-table-body">
@@ -109,7 +109,7 @@
             <div class="col-md-4">
               <label class="form-label fw-bold text-danger">Harga Diskon / Promo (Rp)</label>
               <input type="number" id="new-prod-discount-price" class="form-control fw-bold text-danger border-danger-subtle" placeholder="Opsional (Harga coret)" min="0">
-              <small class="text-muted" style="font-size:0.75rem;">Set 0 jika tidak ada promo</small>
+              <small class="text-muted fs-075">Set 0 jika tidak ada promo</small>
             </div>
           </div>
 
@@ -121,7 +121,7 @@
             <div class="col-md-6">
               <label class="form-label small fw-semibold">Batas Stok Minimum (Peringatan)</label>
               <input type="number" id="new-prod-min-stock" class="form-control form-control-lg" min="0" value="5">
-              <small class="text-muted" style="font-size:0.75rem;">Alert saat sisa stok mencapai nilai ini</small>
+              <small class="text-muted fs-075">Alert saat sisa stok mencapai nilai ini</small>
             </div>
           </div>
 
@@ -133,8 +133,8 @@
             <input type="file" id="new-prod-image-file" class="form-control mb-2" accept="image/*" onchange="handleImageFileSelect(event)">
             <input type="hidden" id="new-prod-image-url">
             
-            <div id="image-preview-wrapper" style="display: none;" class="mt-2 d-flex align-items-center gap-3">
-              <img id="image-preview-element" src="" alt="Preview Foto" class="rounded border shadow-sm" style="width: 80px; height: 80px; object-fit: cover;">
+            <div id="image-preview-wrapper" class="is-hidden mt-2 align-items-center gap-3">
+              <img id="image-preview-element" src="" alt="Preview Foto" class="rounded border shadow-sm image-preview">
               <div>
                 <span class="badge bg-success mb-1" id="image-upload-status">Foto Siap</span>
                 <div class="small text-muted" id="image-filename">preview.jpg</div>
@@ -199,7 +199,7 @@
                   <tr>
                     <th>Nama Kategori</th>
                     <th>Slug URL</th>
-                    <th style="width: 80px;" class="text-center no-sort">Aksi</th>
+                    <th class="table-col-action-sm text-center no-sort">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="category-list-body">
@@ -222,7 +222,7 @@
                 <thead class="table-light">
                   <tr>
                     <th>Nama Brand</th>
-                    <th style="width: 80px;" class="text-center no-sort">Aksi</th>
+                    <th class="table-col-action-sm text-center no-sort">Aksi</th>
                   </tr>
                 </thead>
                 <tbody id="brand-list-body">
@@ -272,7 +272,7 @@
             <small class="text-muted">Pastikan file dalam format CSV UTF-8 (bisa dibuka dan diedit di Microsoft Excel).</small>
           </div>
 
-          <div id="import-result-box" style="display: none;" class="p-3 rounded border mb-3"></div>
+          <div id="import-result-box" class="is-hidden p-3 rounded border mb-3"></div>
 
           <div class="d-flex justify-content-end gap-2">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -338,7 +338,7 @@
             <div class="col-md-4">
               <label class="form-label fw-bold text-danger">Harga Diskon / Promo (Rp)</label>
               <input type="number" id="edit-prod-discount-price" class="form-control fw-bold text-danger border-danger-subtle" min="0" placeholder="0 jika tidak diskon">
-              <small class="text-muted" style="font-size:0.75rem;">Set 0 jika tidak ada promo harga coret</small>
+              <small class="text-muted fs-075">Set 0 jika tidak ada promo harga coret</small>
             </div>
           </div>
 
@@ -346,7 +346,7 @@
             <div class="col-md-6">
               <label class="form-label small fw-semibold">Batas Stok Minimum (Peringatan)</label>
               <input type="number" id="edit-prod-min-stock" class="form-control" min="0" value="5">
-              <small class="text-muted" style="font-size:0.75rem;">Peringatan stok kritis jika stok berada di bawah angka ini.</small>
+              <small class="text-muted fs-075">Peringatan stok kritis jika stok berada di bawah angka ini.</small>
             </div>
           </div>
 
@@ -358,8 +358,8 @@
             <input type="file" id="edit-prod-image-file" class="form-control mb-2" accept="image/*" onchange="handleEditImageFileSelect(event)">
             <input type="hidden" id="edit-prod-image-url">
             
-            <div id="edit-image-preview-wrapper" style="display: none;" class="mt-2 d-flex align-items-center gap-3">
-              <img id="edit-image-preview-element" src="" alt="Preview Foto" class="rounded border shadow-sm" style="width: 80px; height: 80px; object-fit: cover;">
+            <div id="edit-image-preview-wrapper" class="is-hidden mt-2 align-items-center gap-3">
+              <img id="edit-image-preview-element" src="" alt="Preview Foto" class="rounded border shadow-sm image-preview">
               <div>
                 <span class="badge bg-success mb-1" id="edit-image-upload-status">Foto Siap</span>
                 <div class="small text-muted" id="edit-image-filename">foto.jpg</div>

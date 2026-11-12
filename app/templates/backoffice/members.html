@@ -3,71 +3,7 @@
 {% block title %}Member & Affiliate{% endblock %}
 
 {% block extra_css %}
-<style>
-  /* Member Card Preview Styles */
-  .member-card-container {
-    max-width: 420px;
-    margin: 0 auto;
-    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-    color: #fff;
-    border-radius: 16px;
-    padding: 24px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-    position: relative;
-    overflow: hidden;
-  }
-  .member-card-container::before {
-    content: "";
-    position: absolute;
-    top: -50px;
-    right: -50px;
-    width: 150px;
-    height: 150px;
-    background: rgba(59, 130, 246, 0.15);
-    border-radius: 50%;
-  }
-  .member-card-badge {
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    font-size: 0.75rem;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-  }
-  .member-card-barcode-box {
-    background: #fff;
-    padding: 10px 14px;
-    border-radius: 10px;
-    margin-top: 16px;
-    text-align: center;
-  }
-  .member-card-barcode-box svg {
-    max-width: 100%;
-    height: auto;
-  }
-
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    #printable-member-card, #printable-member-card * {
-      visibility: visible;
-    }
-    #printable-member-card {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      width: 100%;
-      max-width: 450px;
-      margin: 0 !important;
-      box-shadow: none !important;
-      border: 1px solid #ccc;
-    }
-  }
-</style>
+<link rel="stylesheet" href="/static/css/members.css">
 {% endblock %}
 
 {% block content %}
@@ -152,11 +88,11 @@
             <table class="table table-hover align-middle mb-0" id="discounts-table">
               <thead class="table-light">
                 <tr>
-                  <th style="width: 300px;">Produk Pakaian</th>
+                  <th class="member-col-product">Produk Pakaian</th>
                   <th>SKU / Barcode</th>
                   <th>Harga Normal</th>
-                  <th style="width: 160px;">Tipe Diskon</th>
-                  <th style="width: 180px;">Nilai Diskon</th>
+                  <th class="member-col-type">Tipe Diskon</th>
+                  <th class="member-col-value">Nilai Diskon</th>
                   <th>Harga Member</th>
                   <th class="text-end no-sort">Aksi</th>
                 </tr>
@@ -189,11 +125,11 @@
             <table class="table table-hover align-middle mb-0" id="commissions-table">
               <thead class="table-light">
                 <tr>
-                  <th style="width: 300px;">Produk Pakaian</th>
+                  <th class="member-col-product">Produk Pakaian</th>
                   <th>SKU / Barcode</th>
                   <th>Harga Jual</th>
-                  <th style="width: 160px;">Tipe Komisi</th>
-                  <th style="width: 180px;">Nilai Komisi</th>
+                  <th class="member-col-type">Tipe Komisi</th>
+                  <th class="member-col-value">Nilai Komisi</th>
                   <th>Estimasi Komisi / Pcs</th>
                   <th class="text-end no-sort">Aksi</th>
                 </tr>
@@ -262,12 +198,12 @@
               <span class="input-group-text bg-light fw-bold"></span>
               <input type="text" id="modal-member-code" class="form-control font-monospace fw-bold fs-5 text-primary text-uppercase" maxlength="12" required oninput="renderModalBarcode(this.value)">
             </div>
-            <small class="text-muted" style="font-size:0.75rem;">ID unik 12 digit acak yang di-generate menjadi barcode batang.</small>
+            <small class="text-muted fs-075">ID unik 12 digit acak yang di-generate menjadi barcode batang.</small>
           </div>
 
           <!-- Live Barcode Preview in Modal -->
           <div class="p-2 border rounded bg-light text-center mb-3">
-            <svg id="modal-barcode-preview" style="max-width: 100%; height: 60px;"></svg>
+            <svg id="modal-barcode-preview" class="barcode-preview"></svg>
           </div>
 
           <div class="mb-3">
@@ -278,7 +214,7 @@
           <div class="mb-3">
             <label class="form-label fw-bold">Nomor Handphone / WhatsApp <span class="text-danger">*</span></label>
             <input type="text" id="modal-member-phone" class="form-control" placeholder="Contoh: 081234567890" required>
-            <small class="text-muted" style="font-size:0.75rem;">Nomor ini bisa digunakan kasir saat scan/cari member secara manual.</small>
+            <small class="text-muted fs-075">Nomor ini bisa digunakan kasir saat scan/cari member secara manual.</small>
           </div>
 
           <div class="mb-3">
@@ -319,21 +255,21 @@
               <h5 class="fw-bold mb-0 text-white d-flex align-items-center gap-2">
                 <span class="app-store-name">Momaz</span>
               </h5>
-              <small class="text-white-50" style="font-size:0.7rem;">KARTU MEMBER & AFFILIATE</small>
+              <small class="text-white-50 fs-070">KARTU MEMBER & AFFILIATE</small>
             </div>
             <span class="member-card-badge">VIP MEMBER</span>
           </div>
 
           <div class="mb-3">
-            <div class="text-white-50 small" style="font-size:0.75rem;">NAMA MEMBER</div>
+            <div class="text-white-50 small fs-075">NAMA MEMBER</div>
             <div class="fs-5 fw-bold text-white text-truncate" id="card-preview-name">-</div>
             <div class="small text-white-50" id="card-preview-phone">-</div>
           </div>
 
           <div class="member-card-barcode-box">
             <div class="d-flex justify-content-between align-items-center px-1 mb-1">
-              <span class="text-muted" style="font-size:0.65rem; font-weight:600;">SCAN BARCODE KASIR</span>
-              <strong class="font-monospace text-dark" id="card-preview-code-text" style="font-size:0.85rem;">-</strong>
+              <span class="text-muted fs-065 fw-semibold">SCAN BARCODE KASIR</span>
+              <strong class="font-monospace text-dark fs-085" id="card-preview-code-text">-</strong>
             </div>
             <svg id="card-preview-barcode-svg"></svg>
           </div>
@@ -397,8 +333,8 @@
             </span>
           </td>
           <td>
-            <div style="cursor:pointer;" onclick="openPrintCardModal(${m.id})" title="Klik untuk perbesar/cetak">
-              <svg class="member-row-barcode" id="barcode-row-${m.id}" style="height: 36px; max-width: 140px;"></svg>
+            <div class="member-row-link" onclick="openPrintCardModal(${m.id})" title="Klik untuk perbesar/cetak">
+              <svg class="member-row-barcode" id="barcode-row-${m.id}"></svg>
             </div>
           </td>
           <td class="fw-bold">${escapeHTML(m.name)}</td>

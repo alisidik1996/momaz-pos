@@ -1,0 +1,79 @@
+/* Tenant Setup Wizard */
+.wizard-card {
+  max-width: 760px;
+  margin: 30px auto;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+}
+
+.wizard-step {
+  display: none;
+}
+
+.step-indicator {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: 2rem;
+}
+
+.step-indicator::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  right: 30px;
+  height: 2px;
+  background-color: #e2e8f0;
+  z-index: 1;
+}
+
+.step-bubble {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 2px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: #64748b;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.step-item.active .step-bubble {
+  border-color: #2563eb;
+  background-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+}
+
+.step-item.completed .step-bubble {
+  border-color: #10b981;
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+.step-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.step-item.active .step-title {
+  color: #2563eb;
+}
+
+.setup-hint {
+  font-size: 0.75rem;
+}
+
+.setup-hint-sm {
+  font-size: 0.78rem;
+}

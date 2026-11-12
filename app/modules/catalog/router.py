@@ -17,11 +17,11 @@ from app.modules.catalog.schemas import (
 )
 from app.modules.catalog import service
 
-from app.core.storage import upload_file_to_blob_or_local, read_bounded_upload, MAX_CSV_BYTES
+from app.core.storage import save_uploaded_image, read_bounded_upload, MAX_CSV_BYTES
 
 router = APIRouter(prefix="/api/catalog", tags=["Catalog (Clothing, Variants, Barcodes)"])
 
-# Image Upload for Clothing Products (Vercel Blob / Local Storage)
+# Image Upload for Clothing Products (Local Storage)
 @router.post("/upload-image")
 async def upload_product_image(
     file: UploadFile = File(...),
@@ -32,7 +32,7 @@ async def upload_product_image(
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="Format file tidak didukung. Harap upload gambar (PNG, JPG, WEBP).")
 
-    image_url = await upload_file_to_blob_or_local(file, folder="products")
+    image_url = await save_uploaded_image(file, folder="products")
     return {"image_url": image_url}
 
 # Bulk Import & Export (CSV)

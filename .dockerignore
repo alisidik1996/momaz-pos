@@ -1,0 +1,44 @@
+# Version control & CI
+.git
+.gitignore
+.github
+
+# Local environments
+.venv
+venv
+env
+ENV
+node_modules
+
+# Python caches & artifacts
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Local databases & runtime data
+*.db
+*.db-*
+*.db-journal
+*.db-wal
+*.db-shm
+master.db
+tenants/
+
+# Secrets & local env
+.env
+.env.*
+!.env.example
+
+# Local uploads (volume is mounted at runtime)
+app/static/uploads/products/*
+!app/static/uploads/products/.gitkeep
+
+# Test-only and misc
+tests/
+scratch/
+*.stackdump

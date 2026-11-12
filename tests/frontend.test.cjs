@@ -181,7 +181,7 @@ test("F9 preserves noncash payment selection through member confirmation", async
 
 test("every inline template script is syntactically valid JavaScript", () => {
   const templates = ["login.html", "setup.html", "pos/index.html", ...[
-    "customers", "dashboard", "inventory", "members", "products", "reports", "returns", "sales", "settings", "shifts", "users"
+    "dashboard", "inventory", "members", "products", "reports", "returns", "sales", "settings", "shifts", "users"
   ].map(name => `backoffice/${name}.html`)];
   for (const template of templates) {
     const html = fs.readFileSync(path.join(root, "app/templates", template), "utf8");

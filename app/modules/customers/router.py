@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, Response, Request
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db, MasterSessionLocal, TenantManager
@@ -54,7 +54,7 @@ def member_portal_lookup(
     else:
         # Search all active tenants for customer code
         with MasterSessionLocal() as master_db:
-            active_tenants = master_db.query(Tenant).filter(Tenant.is_active == True).all()
+            active_tenants = master_db.query(Tenant).filter(Tenant.is_active).all()
 
         cust = None
         for t in active_tenants:

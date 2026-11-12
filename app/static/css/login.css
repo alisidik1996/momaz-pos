@@ -1,0 +1,52 @@
+/* Login & Register Page */
+.auth-page {
+  min-height: 100vh;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+}
+
+.auth-title {
+  letter-spacing: -0.5px;
+}
+
+.auth-tabs {
+  background-color: #f1f5f9;
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.auth-tabs .nav-link {
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  color: #64748b;
+  transition: all 0.2s ease;
+}
+
+.auth-tabs .nav-link.active {
+  background-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.auth-page .form-control {
+  border-radius: 10px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.auth-page .form-control:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.auth-submit {
+  border-radius: 10px;
+}
