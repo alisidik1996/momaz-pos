@@ -11,6 +11,10 @@
   display: none;
 }
 
+.wizard-step.active {
+  display: block;
+}
+
 .step-indicator {
   display: flex;
   justify-content: space-between;

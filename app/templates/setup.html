@@ -48,7 +48,7 @@
 
         <form id="wizard-form">
           <!-- ================= STEP 1: PROFIL TOKO ================= -->
-          <div class="wizard-step" id="step-1">
+          <div class="wizard-step active" id="step-1">
             <h5 class="fw-bold text-primary mb-3">Langkah 1: Identitas Toko & Kode Tenant</h5>
             <p class="text-muted small mb-4">Setiap toko memiliki database mandiri yang aman dan terisolasi.</p>
 
@@ -388,14 +388,14 @@
       }
 
       for (let i = 1; i <= 4; i++) {
-        document.getElementById(`step-${i}`).style.display = "none";
+        document.getElementById(`step-${i}`).classList.remove("active");
         const ind = document.getElementById(`indicator-${i}`);
         ind.classList.remove("active");
         if (i < step) ind.classList.add("completed");
         else ind.classList.remove("completed");
       }
 
-      document.getElementById(`step-${step}`).style.display = "block";
+      document.getElementById(`step-${step}`).classList.add("active");
       document.getElementById(`indicator-${step}`).classList.add("active");
       currentStep = step;
 
