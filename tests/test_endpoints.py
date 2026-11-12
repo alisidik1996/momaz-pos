@@ -89,7 +89,7 @@ def test_page_redirects_unauthenticated(client):
     # Login page loads successfully
     login_res = client.get("/login")
     assert login_res.status_code == 200
-    assert "MOMAZ POS" in login_res.text
+    assert "MTP" in login_res.text
 
 def test_catalog_category_and_brand_endpoints(client, test_setup_admin):
     headers = {"Authorization": f"Bearer {test_setup_admin['token']}"}
