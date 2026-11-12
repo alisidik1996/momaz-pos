@@ -103,13 +103,13 @@ async function loadBackofficeProducts() {
           <td>
             <div class="d-flex flex-wrap gap-1">
               <button class="btn btn-sm btn-outline-success" onclick="openRestockModal(${p.id})" title="Tambah Stok Produk">
-                <i class="bi bi-box-arrow-in-down me-1"></i>+ Stok
+                + Stok
               </button>
               <button class="btn btn-sm btn-outline-warning" onclick="openEditProductModal(${p.id})" title="Edit Detail Produk">
-                <i class="bi bi-pencil me-1"></i>Edit
+                Edit
               </button>
               <button class="btn btn-sm btn-outline-danger" onclick="deleteProduct(${p.id})" title="Hapus Produk">
-                <i class="bi bi-trash"></i>
+                Hapus
               </button>
             </div>
           </td>
@@ -228,7 +228,7 @@ async function loadSalesHistory() {
         <td class="fw-bold text-primary">${formatRupiah(o.total_amount)}</td>
         <td>
           <button class="btn btn-sm btn-outline-primary me-1" onclick="viewReceipt(${o.id})">
-            <i class="bi bi-printer me-1"></i> Struk
+            Struk
           </button>
         </td>
       </tr>

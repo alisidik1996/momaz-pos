@@ -131,16 +131,16 @@
           <input type="text" id="member-search" class="form-control search-input border-start-0"
                  placeholder="Contoh: A1B2C3D4E5F6 atau 08123456789" autocomplete="off" autofocus>
           <button class="btn btn-primary btn-scan" onclick="searchMember()" id="btn-search">
-            <i class="bi bi-person-check me-1"></i> Cek Member
+            Cek Member
           </button>
         </div>
 
         <div class="d-flex justify-content-center gap-2 mt-3">
           <button class="btn btn-outline-secondary btn-sm" onclick="startScanner(event)">
-            <i class="bi bi-camera-video me-1"></i> Buka Kamera (Scan)
+            Buka Kamera (Scan)
           </button>
           <button class="btn btn-outline-primary btn-sm" onclick="clearSearch()">
-            <i class="bi bi-x-circle me-1"></i> Bersihkan
+            Bersihkan
           </button>
         </div>
       </div>
@@ -169,7 +169,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <h5 class="fw-bold mb-0">Riwayat Belanja</h5>
         <button class="btn btn-outline-secondary btn-sm" onclick="printCard()">
-          <i class="bi bi-printer me-1"></i> Cetak Kartu
+          Cetak Kartu
         </button>
       </div>
 
@@ -242,7 +242,7 @@
         showToast(err.message, 'error');
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<i class="bi bi-person-check me-1"></i> Cek Member`;
+        btn.innerHTML = `Cek Member`;
       }
     }
 
@@ -378,7 +378,7 @@
       } finally {
         if (btn) {
           btn.disabled = false;
-          btn.innerHTML = `<i class="bi bi-camera-video me-1"></i> Buka Kamera (Scan)`;
+          btn.innerHTML = `Buka Kamera (Scan)`;
         }
       }
     }
