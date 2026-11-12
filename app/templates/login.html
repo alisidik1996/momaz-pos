@@ -190,8 +190,8 @@
 
         showToast("Pendaftaran admin berhasil! Mengalihkan ke Setup Toko...", "success");
         setTimeout(() => {
-          window.location.href = "/setup";
-        }, 600);
+          window.location.replace("/setup");
+        }, 300);
       } catch (err) {
         showToast(err.message, "error");
         btn.disabled = false;

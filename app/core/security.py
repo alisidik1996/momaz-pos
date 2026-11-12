@@ -82,12 +82,19 @@ def decode_access_token(token: str) -> Optional[dict]:
         return None
 
 
+def _request_is_https(request: Request) -> bool:
+    if request.url.scheme == "https":
+        return True
+    forwarded = request.headers.get("x-forwarded-proto", "")
+    return forwarded.split(",")[0].strip().lower() == "https"
+
+
 def set_auth_cookie(response: Response, request: Request, token: str):
     response.set_cookie(
         key="access_token",
-        value=f"Bearer {token}",
+        value=token,
         httponly=True,
-        secure=bool(getattr(settings, "IS_PRODUCTION", False)) or request.url.scheme == "https",
+        secure=_request_is_https(request),
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         samesite="lax",
     )

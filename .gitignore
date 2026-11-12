@@ -69,3 +69,5 @@ Thumbs.db
 
 # Antigravity CLI
 .gemini/
+# Local development signing key (generated automatically)
+.local_secret_key

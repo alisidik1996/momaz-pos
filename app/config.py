@@ -48,7 +48,23 @@ class Settings:
     configured_secret: str = os.getenv("SECRET_KEY", "").strip()
     if IS_PRODUCTION and (len(configured_secret.encode("utf-8")) < 32 or configured_secret.startswith("super-secret-momaz-pos-")):
         raise RuntimeError("SECRET_KEY produksi wajib diisi dengan kunci acak minimal 32 byte.")
-    SECRET_KEY: str = configured_secret or secrets.token_urlsafe(48)
+
+    # Local dev key is persisted so reloading the server does not invalidate
+    # sessions created moments earlier (e.g. right after registration).
+    _local_secret_file = Path(os.getenv("LOCAL_SECRET_FILE", "").strip() or (BASE_DIR / ".local_secret_key"))
+    _local_secret = ""
+    if not configured_secret and not IS_PRODUCTION:
+        try:
+            _local_secret = _local_secret_file.read_text(encoding="utf-8").strip()
+        except OSError:
+            _local_secret = ""
+        if len(_local_secret.encode("utf-8")) < 32:
+            _local_secret = secrets.token_urlsafe(48)
+            try:
+                _local_secret_file.write_text(_local_secret, encoding="utf-8")
+            except OSError:
+                pass
+    SECRET_KEY: str = configured_secret or _local_secret
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
 
