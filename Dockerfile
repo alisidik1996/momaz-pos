@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-RUN mkdir -p /app/static/uploads/products /app/tenants && \
-    chmod -R 777 /app/static/uploads /app/tenants
+RUN mkdir -p /app/app/static/uploads/products /app/app/tenants && \
+    chmod -R 777 /app/app/static/uploads /app/app/tenants
 
 EXPOSE 8181
 
